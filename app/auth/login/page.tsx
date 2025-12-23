@@ -47,7 +47,7 @@ export default function LoginPage() {
           <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
             <Check className="w-7 h-7 text-white" strokeWidth={3} />
           </div>
-          <h1 className="text-2xl font-semibold text-white">everyday</h1>
+          <h1 className="text-2xl font-semibold text-white">Orbit</h1>
         </div>
 
         {/* Login Form */}

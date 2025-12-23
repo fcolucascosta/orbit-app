@@ -62,7 +62,20 @@ export default function HabitTracker() {
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
   const [showingColorPicker, setShowingColorPicker] = useState<string | null>(null)
   const [draggedHabit, setDraggedHabit] = useState<string | null>(null)
-  const [visibleDays] = useState(11)
+  const [visibleDays, setVisibleDays] = useState(11)
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Mobile: 3 days, Desktop: 11 days
+      setVisibleDays(window.innerWidth < 768 ? 3 : 11)
+    }
+
+    // Initial check
+    handleResize()
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   useEffect(() => {
     loadUserData()
@@ -420,7 +433,7 @@ export default function HabitTracker() {
       const newOffset = Math.max(0, todayIndex - visibleDays + 1)
       setScrollOffset(newOffset)
     }
-  }, [])
+  }, [visibleDays]) // Re-run when visibleDays changes
 
   if (loading) {
     return (
@@ -453,7 +466,7 @@ export default function HabitTracker() {
 
       <div className="flex-1 p-6 overflow-hidden">
         <div className="flex gap-4 h-full">
-          <div className="w-[264px] flex-shrink-0">
+          <div className="w-1/3 md:w-[264px] flex-shrink-0">
             <div className="flex items-center justify-between h-16 px-3 mb-2" />
 
             <div className="space-y-2">
@@ -473,13 +486,13 @@ export default function HabitTracker() {
                       backgroundColor: colorData?.value ? `${colorData.value}20` : "#27272a",
                     }}
                   >
-                    <button className="cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity">
+                    <button className="cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity hidden md:block">
                       <GripVertical size={18} className="text-neutral-500" />
                     </button>
 
                     <button
                       onClick={() => setEditingHabit(habit)}
-                      className="hover:opacity-80 transition-opacity"
+                      className="hover:opacity-80 transition-opacity hidden md:block"
                     >
                       <Pencil size={16} className="text-neutral-400" />
                     </button>
@@ -489,7 +502,7 @@ export default function HabitTracker() {
                         e.stopPropagation()
                         setShowingColorPicker(showingColorPicker === habit.id ? null : habit.id)
                       }}
-                      className="hover:opacity-80 transition-opacity"
+                      className="hover:opacity-80 transition-opacity hidden md:block"
                     >
                       <Circle size={20} fill={colorData?.value} />
                     </button>
@@ -510,11 +523,11 @@ export default function HabitTracker() {
                       </div>
                     )}
 
-                    <button className="opacity-0">
+                    <button className="opacity-0 hidden md:block">
                       <Menu size={16} />
                     </button>
 
-                    <div className="flex-1 text-left text-sm font-medium">{habit.name}</div>
+                    <div className="flex-1 text-left text-sm font-medium truncate">{habit.name}</div>
                     {streak > 0 && <div className="text-xs opacity-75">{streak}d</div>}
                   </div>
                 )
@@ -525,25 +538,25 @@ export default function HabitTracker() {
                 className="w-full h-[52px] flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-all"
               >
                 <Plus size={18} />
-                New Habit
+                <span className="hidden md:inline">New Habit</span>
               </button>
             </div>
           </div>
 
-          <div className="flex-1 relative overflow-hidden">
+          <div className="w-2/3 md:flex-1 relative overflow-hidden">
             <button
               onClick={() => handleScroll("left")}
-              className="absolute left-0 top-4 w-8 h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+              className="absolute left-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
               disabled={scrollOffset === 0}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} className="w-3 h-3 md:w-4 md:h-4" />
             </button>
 
             <button
               onClick={() => handleScroll("right")}
-              className="absolute right-0 top-4 w-8 h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+              className="absolute right-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={16} className="w-3 h-3 md:w-4 md:h-4" />
             </button>
 
             <div className="flex h-16 items-end mb-2">
