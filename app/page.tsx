@@ -444,7 +444,7 @@ export default function HabitTracker() {
   }
 
   return (
-    <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
       <header className="border-b border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -461,8 +461,8 @@ export default function HabitTracker() {
         </div>
       </header>
 
-      <div className="flex-1 p-6 overflow-hidden">
-        <div className="flex gap-4 h-full">
+      <div className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
+        <div className="flex gap-4 min-h-full pb-20">
           <div className="w-1/3 md:w-[264px] flex-shrink-0">
             <div className="flex items-center justify-between h-16 px-3 mb-2" />
 
