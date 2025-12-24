@@ -8,14 +8,14 @@ export default function SignUpSuccessPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-600 rounded-none flex items-center justify-center">
             <Check className="w-7 h-7 text-white" strokeWidth={3} />
           </div>
           <h1 className="text-2xl font-semibold text-white">everyday</h1>
         </div>
 
         {/* Success Message */}
-        <div className="bg-card rounded-lg p-8 text-center">
+        <div className="bg-card rounded-none p-8 text-center">
           <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Mail className="w-8 h-8 text-green-500" />
           </div>

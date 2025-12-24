@@ -33,17 +33,16 @@ type HabitCompletion = {
 }
 
 const COLOR_PALETTE = [
-  { name: "emerald", value: "#10b981", hue: 160 },
-  { name: "teal", value: "#14b8a6", hue: 170 },
-  { name: "cyan", value: "#06b6d4", hue: 180 },
-  { name: "sky", value: "#0ea5e9", hue: 200 },
-  { name: "blue", value: "#3b82f6", hue: 220 },
-  { name: "indigo", value: "#6366f1", hue: 240 },
-  { name: "violet", value: "#8b5cf6", hue: 260 },
-  { name: "fuchsia", value: "#d946ef", hue: 290 },
-  { name: "rose", value: "#f43f5e", hue: 340 },
-  { name: "orange", value: "#f97316", hue: 30 },
-  { name: "amber", value: "#f59e0b", hue: 45 },
+  { name: "neon-green", value: "#00FF94", hue: 150 },
+  { name: "neon-cyan", value: "#00F0FF", hue: 180 },
+  { name: "electric-blue", value: "#2979FF", hue: 220 },
+  { name: "deep-purple", value: "#651FFF", hue: 260 },
+  { name: "neon-violet", value: "#D500F9", hue: 290 },
+  { name: "hot-pink", value: "#FF00E6", hue: 320 },
+  { name: "bright-red", value: "#FF1744", hue: 350 },
+  { name: "neon-orange", value: "#FF6D00", hue: 30 },
+  { name: "bright-yellow", value: "#FFD600", hue: 50 },
+  { name: "lime", value: "#C6FF00", hue: 80 },
 ]
 
 export default function HabitTracker() {
@@ -445,7 +444,7 @@ export default function HabitTracker() {
 
   return (
     <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
-      <header className="border-b border-neutral-800 px-6 py-4 flex-shrink-0">
+      <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/logomarca.png" alt="Orbit" className="w-9 h-9 rounded" />
@@ -462,8 +461,8 @@ export default function HabitTracker() {
       </header>
 
       <div className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
-        <div className="flex gap-4 min-h-full pb-20">
-          <div className="w-1/3 md:w-[264px] flex-shrink-0">
+        <div className="flex min-h-full pb-20">
+          <div className="w-1/3 md:w-[264px] flex-shrink-0 border-r-2 border-neutral-800 pr-4 mr-4">
             <div className="flex items-center justify-between h-16 px-3 mb-2" />
 
             <div className="space-y-2">
@@ -478,7 +477,7 @@ export default function HabitTracker() {
                     onDragStart={() => handleDragStart(habit.id)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleDrop(habit.id)}
-                    className="relative flex items-center gap-2 h-[52px] px-3 rounded-lg transition-all"
+                    className="relative flex items-center gap-2 h-[52px] px-3 rounded-none transition-all border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50"
                     style={{
                       backgroundColor: colorData?.value ? `${colorData.value}20` : "var(--secondary)",
                     }}
@@ -505,7 +504,7 @@ export default function HabitTracker() {
                     </button>
 
                     {showingColorPicker === habit.id && (
-                      <div className="absolute left-0 md:left-12 top-14 z-50 bg-neutral-900 rounded-lg shadow-xl p-2 flex flex-wrap gap-2 max-w-[200px]">
+                      <div className="absolute left-0 md:left-12 top-14 z-50 bg-neutral-900 rounded-none shadow-xl p-2 flex flex-wrap gap-2 max-w-[200px]">
                         {COLOR_PALETTE.map((color) => (
                           <button
                             key={color.name}
@@ -513,7 +512,7 @@ export default function HabitTracker() {
                               e.stopPropagation()
                               updateHabitColor(habit.id, color.name)
                             }}
-                            className="w-8 h-8 rounded-full hover:scale-110 transition-transform"
+                            className="w-8 h-8 rounded-none hover:scale-110 transition-transform"
                             style={{ backgroundColor: color.value }}
                           />
                         ))}
@@ -548,7 +547,7 @@ export default function HabitTracker() {
           <div className="w-2/3 md:flex-1 relative overflow-hidden">
             <button
               onClick={() => handleScroll("left")}
-              className="absolute left-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+              className="absolute left-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
               disabled={scrollOffset === 0}
             >
               <ChevronLeft size={16} className="w-3 h-3 md:w-4 md:h-4" />
@@ -556,7 +555,7 @@ export default function HabitTracker() {
 
             <button
               onClick={() => handleScroll("right")}
-              className="absolute right-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+              className="absolute right-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
             >
               <ChevronRight size={16} className="w-3 h-3 md:w-4 md:h-4" />
             </button>
@@ -627,22 +626,22 @@ export default function HabitTracker() {
       </div>
 
       {editingHabit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white text-black rounded-lg w-full max-w-2xl p-6">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 text-white rounded-none w-full max-w-2xl p-6 border border-neutral-800">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-primary">EDIT HABIT</h2>
-              <button onClick={() => setEditingHabit(null)} className="text-neutral-400 hover:text-neutral-600">
+              <button onClick={() => setEditingHabit(null)} className="text-neutral-400 hover:text-white transition-colors">
                 <X size={24} />
               </button>
             </div>
 
             <div className="mb-6">
-              <label className="block text-xs text-neutral-500 mb-2 uppercase tracking-wide">Habit</label>
+              <label className="block text-xs text-neutral-400 mb-2 uppercase tracking-wide">Habit</label>
               <input
                 type="text"
                 value={editingHabit.name}
                 onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-primary rounded text-lg focus:outline-none focus:border-green-700"
+                className="w-full px-4 py-3 bg-neutral-800 border-2 border-primary rounded text-lg text-white focus:outline-none focus:border-green-500 placeholder:text-neutral-500"
               />
             </div>
 
@@ -656,7 +655,7 @@ export default function HabitTracker() {
                 />
                 <span className="font-medium">Break habit</span>
               </label>
-              <p className="text-xs text-neutral-500 ml-6 mt-1">The colourful scale will be descending.</p>
+              <p className="text-xs text-neutral-400 ml-6 mt-1">The colourful scale will be descending.</p>
             </div>
 
             <div className="flex items-center justify-between">
@@ -669,7 +668,7 @@ export default function HabitTracker() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setEditingHabit(null)}
-                  className="px-6 py-2 border border-neutral-300 rounded hover:bg-neutral-100 transition-colors"
+                  className="px-6 py-2 border border-neutral-700 rounded text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                 >
                   CANCEL
                 </button>

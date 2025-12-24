@@ -44,18 +44,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <img src="/logomarca.png" alt="Orbit" className="w-12 h-12 rounded-lg" />
+          <img src="/logomarca.png" alt="Orbit" className="w-12 h-12 rounded-none" />
           <h1 className="text-2xl font-semibold text-white">Orbit</h1>
         </div>
 
         {/* Login Form */}
-        <div className="bg-card rounded-lg p-8">
+        <div className="bg-card rounded-none p-8 border-2 border-neutral-800">
           <h2 className="text-2xl font-semibold text-white mb-2">Welcome back</h2>
           <p className="text-gray-400 mb-6">Sign in to continue your streak</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-gray-300">
+              <Label htmlFor="email" className="text-gray-300 uppercase tracking-wider text-xs font-bold">
                 Email
               </Label>
               <Input
@@ -70,7 +70,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-gray-300">
+              <Label htmlFor="password" className="text-gray-300 uppercase tracking-wider text-xs font-bold">
                 Password
               </Label>
               <Input

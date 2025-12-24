@@ -59,20 +59,20 @@ export default function SignUpPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-600 rounded-none flex items-center justify-center">
             <Check className="w-7 h-7 text-white" strokeWidth={3} />
           </div>
           <h1 className="text-2xl font-semibold text-white">everyday</h1>
         </div>
 
         {/* Sign Up Form */}
-        <div className="bg-card rounded-lg p-8">
+        <div className="bg-card rounded-none p-8 border-2 border-neutral-800">
           <h2 className="text-2xl font-semibold text-white mb-2">Start your journey</h2>
           <p className="text-gray-400 mb-6">Create an account to track your habits</p>
 
           <form onSubmit={handleSignUp} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-gray-300">
+              <Label htmlFor="email" className="text-gray-300 uppercase tracking-wider text-xs font-bold">
                 Email
               </Label>
               <Input
@@ -87,7 +87,7 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-gray-300">
+              <Label htmlFor="password" className="text-gray-300 uppercase tracking-wider text-xs font-bold">
                 Password
               </Label>
               <Input
@@ -102,7 +102,7 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <Label htmlFor="confirm-password" className="text-gray-300">
+              <Label htmlFor="confirm-password" className="text-gray-300 uppercase tracking-wider text-xs font-bold">
                 Confirm Password
               </Label>
               <Input
