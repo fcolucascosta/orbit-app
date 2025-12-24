@@ -40,7 +40,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
@@ -49,7 +49,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-[#1a1a1a] rounded-lg p-8">
+        <div className="bg-card rounded-lg p-8">
           <h2 className="text-2xl font-semibold text-white mb-2">Welcome back</h2>
           <p className="text-gray-400 mb-6">Sign in to continue your streak</p>
 
@@ -65,7 +65,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 bg-[#111] border-gray-700 text-white placeholder:text-gray-500"
+                className="mt-1.5 bg-background border-gray-700 text-white placeholder:text-gray-500"
               />
             </div>
 
@@ -79,7 +79,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 bg-[#111] border-gray-700 text-white"
+                className="mt-1.5 bg-background border-gray-700 text-white"
               />
             </div>
 

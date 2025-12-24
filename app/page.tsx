@@ -434,7 +434,7 @@ export default function HabitTracker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#111] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-neutral-400">Loading your habits...</p>
@@ -444,7 +444,7 @@ export default function HabitTracker() {
   }
 
   return (
-    <div className="h-screen bg-[#111] text-white font-sans flex flex-col overflow-hidden">
+    <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
       <header className="border-b border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -480,7 +480,7 @@ export default function HabitTracker() {
                     onDrop={() => handleDrop(habit.id)}
                     className="relative flex items-center gap-2 h-[52px] px-3 rounded-lg transition-all"
                     style={{
-                      backgroundColor: colorData?.value ? `${colorData.value}20` : "#27272a",
+                      backgroundColor: colorData?.value ? `${colorData.value}20` : "var(--secondary)",
                     }}
                   >
                     <button className="cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity hidden md:block">
@@ -567,10 +567,10 @@ export default function HabitTracker() {
                 const today = isToday(date)
                 return (
                   <div key={idx} className="flex-1 min-w-0">
-                    <div className={`text-center ${today ? "text-white" : "text-neutral-500"}`}>
+                    <div className={`text-center ${today ? "text-white" : "text-neutral-400"}`}>
                       <div className="text-xs">{month}</div>
                       <div className={`text-lg font-semibold ${today ? "text-white" : ""}`}>{day}</div>
-                      <div className="text-[10px] tracking-wider text-neutral-600">{dayName}</div>
+                      <div className="text-[10px] tracking-wider text-neutral-500">{dayName}</div>
                     </div>
                   </div>
                 )
@@ -594,7 +594,7 @@ export default function HabitTracker() {
                         onMouseLeave={() => setHoveredCell(null)}
                         className="flex-1 min-w-0 h-full relative group"
                         style={{
-                          backgroundColor: color || "#1a1a1a",
+                          backgroundColor: color || "var(--card)",
                           transition: "background-color 0.2s ease",
                         }}
                       >
@@ -616,7 +616,7 @@ export default function HabitTracker() {
               {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
                 const count = getDayCompletionCount(date)
                 return (
-                  <div key={idx} className="flex-1 min-w-0 text-center text-xs text-neutral-500">
+                  <div key={idx} className="flex-1 min-w-0 text-center text-xs text-neutral-400">
                     {count || 0}
                   </div>
                 )
@@ -630,7 +630,7 @@ export default function HabitTracker() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white text-black rounded-lg w-full max-w-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#16a34a]">EDIT HABIT</h2>
+              <h2 className="text-xl font-semibold text-primary">EDIT HABIT</h2>
               <button onClick={() => setEditingHabit(null)} className="text-neutral-400 hover:text-neutral-600">
                 <X size={24} />
               </button>
@@ -642,7 +642,7 @@ export default function HabitTracker() {
                 type="text"
                 value={editingHabit.name}
                 onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-[#16a34a] rounded text-lg focus:outline-none focus:border-[#15803d]"
+                className="w-full px-4 py-3 border-2 border-primary rounded text-lg focus:outline-none focus:border-green-700"
               />
             </div>
 
@@ -652,7 +652,7 @@ export default function HabitTracker() {
                   type="checkbox"
                   checked={editingHabit.break_habit || false}
                   onChange={(e) => setEditingHabit({ ...editingHabit, break_habit: e.target.checked })}
-                  className="w-4 h-4 accent-[#16a34a]"
+                  className="w-4 h-4 accent-primary"
                 />
                 <span className="font-medium">Break habit</span>
               </label>
@@ -675,7 +675,7 @@ export default function HabitTracker() {
                 </button>
                 <button
                   onClick={saveHabit}
-                  className="px-6 py-2 bg-[#16a34a] text-white rounded hover:bg-[#15803d] transition-colors font-medium"
+                  className="px-6 py-2 bg-primary text-white rounded hover:bg-green-700 transition-colors font-medium"
                 >
                   EDIT HABIT
                 </button>

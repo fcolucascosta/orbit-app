@@ -16,7 +16,7 @@
   --secondary: #2a2a2a;
   --secondary-foreground: #fff;
   --muted: #2a2a2a;
-  --muted-foreground: #a3a3a3;
+  --muted-foreground: #d4d4d4;
   --accent: #16a34a;
   --accent-foreground: #fff;
   --destructive: oklch(0.577 0.245 27.325);
@@ -40,55 +40,20 @@
   --sidebar-ring: #525252;
 }
 
-/* Dark mode uses same deep dark theme as root */
-.dark {
-  --background: #111;
-  --foreground: #fff;
-  --card: #1a1a1a;
-  --card-foreground: #fff;
-  --popover: #1a1a1a;
-  --popover-foreground: #fff;
-  --primary: #16a34a;
-  --primary-foreground: #fff;
-  --secondary: #2a2a2a;
-  --secondary-foreground: #fff;
-  --muted: #2a2a2a;
-  --muted-foreground: #a3a3a3;
-  --accent: #16a34a;
-  --accent-foreground: #fff;
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: #2a2a2a;
-  --input: #2a2a2a;
-  --ring: #525252;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #111;
-  --sidebar-foreground: #fff;
-  --sidebar-primary: #16a34a;
-  --sidebar-primary-foreground: #fff;
-  --sidebar-accent: #2a2a2a;
-  --sidebar-accent-foreground: #fff;
-  --sidebar-border: #2a2a2a;
-  --sidebar-ring: #525252;
-}
+/* Dark mode: inherits from :root (same deep dark theme) */
 
 @theme inline {
-  /* Using system fonts for cleaner look like Everyday.app */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+  /* Font is now set via Next.js in layout.tsx */
   --font-mono: "Geist Mono", "Geist Mono Fallback";
 
-  /* Added neutral color scale for Everyday.app aesthetic */
-  --color-neutral-300: #a3a3a3;
-  --color-neutral-400: #737373;
-  --color-neutral-500: #525252;
-  --color-neutral-600: #404040;
-  --color-neutral-700: #2a2a2a;
-  --color-neutral-800: #1a1a1a;
-  --color-neutral-900: #0f0f0f;
+  /* Improved neutral color scale for better contrast/accessibility */
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -132,6 +97,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
