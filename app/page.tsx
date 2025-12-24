@@ -525,7 +525,12 @@ export default function HabitTracker() {
 
 
 
-                    <div className="flex-1 text-left text-sm font-medium truncate">{habit.name}</div>
+                    <div
+                      onClick={() => router.push(`/habit/${habit.id}`)}
+                      className="flex-1 text-left text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
+                    >
+                      {habit.name}
+                    </div>
                     {streak > 0 && <div className="text-xs opacity-75">{streak}d</div>}
                   </div>
                 )
