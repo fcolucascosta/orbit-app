@@ -149,6 +149,7 @@ export default function HabitTracker() {
 
   const days = generateDays()
 
+
   const formatDateKey = (date: Date) => {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -442,6 +443,9 @@ export default function HabitTracker() {
     )
   }
 
+  const todayIndex = days.findIndex((date) => isToday(date))
+  const isAtEnd = scrollOffset >= todayIndex - visibleDays + 1
+
   return (
     <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
       <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
@@ -553,12 +557,14 @@ export default function HabitTracker() {
               <ChevronLeft size={16} className="w-3 h-3 md:w-4 md:h-4" />
             </button>
 
-            <button
-              onClick={() => handleScroll("right")}
-              className="absolute right-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
-            >
-              <ChevronRight size={16} className="w-3 h-3 md:w-4 md:h-4" />
-            </button>
+            {!isAtEnd && (
+              <button
+                onClick={() => handleScroll("right")}
+                className="absolute right-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+              >
+                <ChevronRight size={16} className="w-3 h-3 md:w-4 md:h-4" />
+              </button>
+            )}
 
             <div className="flex h-16 items-end mb-2">
               {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
