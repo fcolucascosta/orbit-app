@@ -44,9 +44,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-            <Check className="w-7 h-7 text-white" strokeWidth={3} />
-          </div>
+          <img src="/logomarca.png" alt="Orbit" className="w-12 h-12 rounded-lg" />
           <h1 className="text-2xl font-semibold text-white">Orbit</h1>
         </div>
 

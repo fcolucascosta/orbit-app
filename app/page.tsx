@@ -10,12 +10,9 @@ import {
   ChevronRight,
   Pencil,
   Circle,
-  SlidersHorizontal,
-  ChevronDown,
   X,
   GripVertical,
   LogOut,
-  Menu,
 } from "lucide-react"
 
 type Habit = {
@@ -451,7 +448,7 @@ export default function HabitTracker() {
       <header className="border-b border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#16a34a] rounded flex items-center justify-center text-lg">✓</div>
+            <img src="/logomarca.png" alt="Orbit" className="w-9 h-9 rounded" />
             <h1 className="text-xl font-semibold">Orbit</h1>
           </div>
           <button
@@ -508,7 +505,7 @@ export default function HabitTracker() {
                     </button>
 
                     {showingColorPicker === habit.id && (
-                      <div className="absolute left-12 top-14 z-50 bg-neutral-900 rounded-lg shadow-xl p-2 flex gap-2">
+                      <div className="absolute left-0 md:left-12 top-14 z-50 bg-neutral-900 rounded-lg shadow-xl p-2 flex flex-wrap gap-2 max-w-[200px]">
                         {COLOR_PALETTE.map((color) => (
                           <button
                             key={color.name}
@@ -523,9 +520,7 @@ export default function HabitTracker() {
                       </div>
                     )}
 
-                    <button className="opacity-0 hidden md:block">
-                      <Menu size={16} />
-                    </button>
+
 
                     <div className="flex-1 text-left text-sm font-medium truncate">{habit.name}</div>
                     {streak > 0 && <div className="text-xs opacity-75">{streak}d</div>}
@@ -541,6 +536,13 @@ export default function HabitTracker() {
                 <span className="hidden md:inline">New Habit</span>
               </button>
             </div>
+
+            {habits.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
+                <p className="text-lg mb-2">No habits yet</p>
+                <p className="text-sm">Click the + button to add your first habit!</p>
+              </div>
+            )}
           </div>
 
           <div className="w-2/3 md:flex-1 relative overflow-hidden">
@@ -602,7 +604,7 @@ export default function HabitTracker() {
                           </div>
                         )}
 
-                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
+                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
                       </button>
                     )
                   })}
