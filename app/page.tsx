@@ -487,13 +487,22 @@ export default function HabitTracker() {
             <img src="/logomarca.svg" alt="Everyday Logo" className="w-8 h-8 rounded-none" />
             <h1 className="text-xl font-semibold">Orbit</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
-          >
-            <LogOut size={16} />
-            Sign out
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/import")}
+              className="hidden md:flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors uppercase tracking-wider font-medium"
+            >
+              <span className="text-xs">Import Data</span>
+            </button>
+            <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
+            >
+              <LogOut size={16} />
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -559,50 +568,52 @@ export default function HabitTracker() {
 
 
                     <div
+                      className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-center md:justify-between mr-2 cursor-pointer group/label"
                       onClick={() => router.push(`/habit/${habit.id}`)}
-                      className="flex-1 text-left text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
                     >
-                      {habit.name}
+                      <span className="text-sm font-medium truncate group-hover/label:text-primary transition-colors">
+                        {habit.name}
+                      </span>
+                      {/* Streak or Weekly Goal Progress */}
+                      {habit.period === 'weekly' && habit.frequency_days ? (
+                        <div className="flex gap-1 mt-1 md:mt-0">
+                          {Array.from({ length: habit.frequency_days }).map((_, i) => {
+                            // Calculate completions for the *current calendar week*
+                            const today = new Date()
+                            const startOfWeek = new Date(today)
+                            startOfWeek.setDate(today.getDate() - today.getDay()) // Sunday
+
+                            const endOfWeek = new Date(startOfWeek)
+                            endOfWeek.setDate(endOfWeek.getDate() + 6)
+
+                            const startKey = formatDateKey(startOfWeek)
+                            const endKey = formatDateKey(endOfWeek)
+
+                            // Count completions in this range using reliable string comparison
+                            const weekCompletions = completions.filter(c =>
+                              c.habit_id === habit.id &&
+                              c.date >= startKey &&
+                              c.date <= endKey
+                            ).length
+
+                            const isCompleted = i < weekCompletions
+
+                            return (
+                              <div
+                                key={i}
+                                className={`w-2 h-2 rounded-none border ${isCompleted ? `bg-${habit.color}-500 border-${habit.color}-500` : 'border-neutral-600 bg-transparent'}`}
+                                style={{
+                                  backgroundColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : 'transparent',
+                                  borderColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : '#525252'
+                                }}
+                              />
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        streak > 0 && <div className="text-xs opacity-75 mt-0.5 md:mt-0">{streak}d</div>
+                      )}
                     </div>
-                    {/* Streak or Weekly Goal Progress */}
-                    {habit.period === 'weekly' && habit.frequency_days ? (
-                      <div className="flex gap-1 mr-2">
-                        {Array.from({ length: habit.frequency_days }).map((_, i) => {
-                          // Calculate completions for the *current calendar week*
-                          const today = new Date()
-                          const startOfWeek = new Date(today)
-                          startOfWeek.setDate(today.getDate() - today.getDay()) // Sunday
-
-                          const endOfWeek = new Date(startOfWeek)
-                          endOfWeek.setDate(endOfWeek.getDate() + 6)
-
-                          const startKey = formatDateKey(startOfWeek)
-                          const endKey = formatDateKey(endOfWeek)
-
-                          // Count completions in this range using reliable string comparison
-                          const weekCompletions = completions.filter(c =>
-                            c.habit_id === habit.id &&
-                            c.date >= startKey &&
-                            c.date <= endKey
-                          ).length
-
-                          const isCompleted = i < weekCompletions
-
-                          return (
-                            <div
-                              key={i}
-                              className={`w-2 h-2 rounded-none border ${isCompleted ? `bg-${habit.color}-500 border-${habit.color}-500` : 'border-neutral-600 bg-transparent'}`}
-                              style={{
-                                backgroundColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : 'transparent',
-                                borderColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : '#525252'
-                              }}
-                            />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      streak > 0 && <div className="text-xs opacity-75 mr-2">{streak}d</div>
-                    )}
                   </div>
                 )
               })}
