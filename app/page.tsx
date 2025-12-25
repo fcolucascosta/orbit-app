@@ -22,7 +22,8 @@ type Habit = {
   position: number
   user_id?: string
   break_habit?: boolean
-  frequency?: string[]
+  frequency_days?: number
+  period?: "daily" | "weekly"
 }
 
 type HabitCompletion = {
@@ -59,6 +60,22 @@ export default function HabitTracker() {
   const [showingColorPicker, setShowingColorPicker] = useState<string | null>(null)
   const [draggedHabit, setDraggedHabit] = useState<string | null>(null)
   const [visibleDays, setVisibleDays] = useState(11)
+
+  // Creation Modal State
+  const [showingCreateModal, setShowingCreateModal] = useState(false)
+  const [createData, setCreateData] = useState<{
+    name: string
+    color: string
+    break_habit: boolean
+    frequency_days: number
+    period: "daily" | "weekly"
+  }>({
+    name: "New Habit",
+    color: "neon-green",
+    break_habit: false,
+    frequency_days: 1,
+    period: "daily"
+  })
 
   useEffect(() => {
     const handleResize = () => {
@@ -281,16 +298,28 @@ export default function HabitTracker() {
     if (!userId) return
 
     const newHabit = {
-      name: "New Habit",
-      color: "emerald",
+      name: createData.name || "New Habit",
+      color: createData.color,
       position: habits.length,
       user_id: userId,
+      break_habit: createData.break_habit,
+      frequency_days: createData.period === 'daily' ? 1 : createData.frequency_days,
+      period: createData.period
     }
 
     const { data, error } = await supabase.from("habits").insert(newHabit).select().single()
 
     if (!error && data) {
       setHabits([...habits, data])
+      setShowingCreateModal(false)
+      // Reset form
+      setCreateData({
+        name: "New Habit",
+        color: "neon-green",
+        break_habit: false,
+        frequency_days: 1,
+        period: "daily"
+      })
     }
   }
 
@@ -337,17 +366,21 @@ export default function HabitTracker() {
   const saveHabit = async () => {
     if (!editingHabit) return
 
+    const updates = {
+      name: editingHabit.name,
+      color: editingHabit.color,
+      break_habit: editingHabit.break_habit,
+      frequency_days: editingHabit.period === 'daily' ? 1 : editingHabit.frequency_days,
+      period: editingHabit.period
+    }
+
     const { error } = await supabase
       .from("habits")
-      .update({
-        name: editingHabit.name,
-        color: editingHabit.color,
-        break_habit: editingHabit.break_habit,
-      })
+      .update(updates)
       .eq("id", editingHabit.id)
 
     if (!error) {
-      setHabits(habits.map((h) => (h.id === editingHabit.id ? editingHabit : h)))
+      setHabits(habits.map((h) => (h.id === editingHabit.id ? { ...h, ...updates } : h)))
       setEditingHabit(null)
     }
   }
@@ -531,13 +564,51 @@ export default function HabitTracker() {
                     >
                       {habit.name}
                     </div>
-                    {streak > 0 && <div className="text-xs opacity-75">{streak}d</div>}
+                    {/* Streak or Weekly Goal Progress */}
+                    {habit.period === 'weekly' && habit.frequency_days ? (
+                      <div className="flex gap-1 mr-2">
+                        {Array.from({ length: habit.frequency_days }).map((_, i) => {
+                          // Calculate completions for the *current calendar week*
+                          const today = new Date()
+                          const startOfWeek = new Date(today)
+                          startOfWeek.setDate(today.getDate() - today.getDay()) // Sunday
+
+                          const endOfWeek = new Date(startOfWeek)
+                          endOfWeek.setDate(endOfWeek.getDate() + 6)
+
+                          const startKey = formatDateKey(startOfWeek)
+                          const endKey = formatDateKey(endOfWeek)
+
+                          // Count completions in this range using reliable string comparison
+                          const weekCompletions = completions.filter(c =>
+                            c.habit_id === habit.id &&
+                            c.date >= startKey &&
+                            c.date <= endKey
+                          ).length
+
+                          const isCompleted = i < weekCompletions
+
+                          return (
+                            <div
+                              key={i}
+                              className={`w-2 h-2 rounded-none border ${isCompleted ? `bg-${habit.color}-500 border-${habit.color}-500` : 'border-neutral-600 bg-transparent'}`}
+                              style={{
+                                backgroundColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : 'transparent',
+                                borderColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : '#525252'
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      streak > 0 && <div className="text-xs opacity-75 mr-2">{streak}d</div>
+                    )}
                   </div>
                 )
               })}
 
               <button
-                onClick={addHabit}
+                onClick={() => setShowingCreateModal(true)}
                 className="w-full h-[52px] flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-all"
               >
                 <Plus size={18} />
@@ -637,57 +708,233 @@ export default function HabitTracker() {
       </div>
 
       {editingHabit && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 text-white rounded-none w-full max-w-2xl p-6 border border-neutral-800">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-primary">EDIT HABIT</h2>
-              <button onClick={() => setEditingHabit(null)} className="text-neutral-400 hover:text-white transition-colors">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white rounded-none w-full max-w-md p-0 border-2 border-neutral-800 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b-2 border-neutral-800 bg-neutral-900">
+              <h2 className="text-xl font-bold uppercase tracking-wider text-white">EDIT HABIT</h2>
+              <button
+                onClick={() => setEditingHabit(null)}
+                className="text-neutral-500 hover:text-white transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-xs text-neutral-400 mb-2 uppercase tracking-wide">Habit</label>
-              <input
-                type="text"
-                value={editingHabit.name}
-                onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-800 border-2 border-primary rounded text-lg text-white focus:outline-none focus:border-green-500 placeholder:text-neutral-500"
-              />
-            </div>
-
-            <div className="mb-6 pb-6 border-b">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="p-6 space-y-6">
+              {/* Name Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">NAME</label>
                 <input
-                  type="checkbox"
-                  checked={editingHabit.break_habit || false}
-                  onChange={(e) => setEditingHabit({ ...editingHabit, break_habit: e.target.checked })}
-                  className="w-4 h-4 accent-primary"
+                  type="text"
+                  placeholder="E.g. Gym, Read, Meditate"
+                  value={editingHabit.name}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
+                  className="w-full bg-black border-2 border-neutral-800 p-4 text-lg font-bold text-white placeholder-neutral-700 focus:border-green-500 focus:outline-none rounded-none transition-colors"
                 />
-                <span className="font-medium">Break habit</span>
-              </label>
-              <p className="text-xs text-neutral-400 ml-6 mt-1">The colourful scale will be descending.</p>
-            </div>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => deleteHabit(editingHabit.id)}
-                className="text-sm text-red-500 hover:text-red-700 font-medium"
-              >
-                ✕ delete
-              </button>
-              <div className="flex gap-3">
+              {/* Frequency Toggle */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">FREQUENCY</label>
+                <div className="flex w-full border-2 border-neutral-800">
+                  <button
+                    onClick={() => setEditingHabit({ ...editingHabit, period: 'daily' })}
+                    className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${(!editingHabit.period || editingHabit.period === 'daily')
+                      ? 'bg-neutral-100 text-black'
+                      : 'bg-transparent text-neutral-500 hover:text-neutral-300'
+                      }`}
+                  >
+                    Every Day
+                  </button>
+                  <div className="w-[2px] bg-neutral-800"></div>
+                  <button
+                    onClick={() => setEditingHabit({ ...editingHabit, period: 'weekly', frequency_days: editingHabit.frequency_days || 3 })}
+                    className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${editingHabit.period === 'weekly'
+                      ? 'bg-neutral-100 text-black'
+                      : 'bg-transparent text-neutral-500 hover:text-neutral-300'
+                      }`}
+                  >
+                    Weekly
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekly Days Selector (Only if Weekly) */}
+              {editingHabit.period === 'weekly' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    DAYS PER WEEK: <span className="text-white text-lg ml-2">{editingHabit.frequency_days || 3}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="7"
+                    step="1"
+                    value={editingHabit.frequency_days || 3}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, frequency_days: parseInt(e.target.value) })}
+                    className="w-full accent-green-500 h-2 bg-neutral-800 rounded-none appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-neutral-600 font-mono mt-1">
+                    <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Break Habit Toggle */}
+              <div className="pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-6 h-6 border-2 flex items-center justify-center transition-colors ${editingHabit.break_habit ? 'bg-red-500 border-red-500' : 'border-neutral-700 bg-transparent group-hover:border-neutral-500'
+                    }`}>
+                    {editingHabit.break_habit && <X size={16} className="text-white" />}
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingHabit.break_habit || false}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, break_habit: e.target.checked })}
+                    className="hidden"
+                  />
+                  <div>
+                    <span className="font-bold uppercase text-sm text-neutral-300 group-hover:text-white transition-colors">Break a bad habit</span>
+                    <p className="text-[10px] text-neutral-600 font-medium uppercase mt-0.5">Colors will fade as you succeed</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={() => deleteHabit(editingHabit.id)}
+                  className="flex-1 py-4 border-2 border-red-900/50 text-red-500 font-bold uppercase tracking-wider hover:bg-red-900/20 hover:border-red-500 transition-all"
+                >
+                  Delete
+                </button>
+                <div className="w-2"></div>
                 <button
                   onClick={() => setEditingHabit(null)}
-                  className="px-6 py-2 border border-neutral-700 rounded text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                  className="flex-1 py-4 border-2 border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider hover:bg-neutral-800 hover:text-white transition-all"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   onClick={saveHabit}
-                  className="px-6 py-2 bg-primary text-white rounded hover:bg-green-700 transition-colors font-medium"
+                  className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
                 >
-                  EDIT HABIT
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showingCreateModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white rounded-none w-full max-w-md p-0 border-2 border-neutral-800 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b-2 border-neutral-800 bg-neutral-900">
+              <h2 className="text-xl font-bold uppercase tracking-wider text-white">NEW HABIT</h2>
+              <button
+                onClick={() => setShowingCreateModal(false)}
+                className="text-neutral-500 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Name Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">NAME</label>
+                <input
+                  type="text"
+                  placeholder="E.g. Gym, Read, Meditate"
+                  value={createData.name === "New Habit" ? "" : createData.name}
+                  onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
+                  className="w-full bg-black border-2 border-neutral-800 p-4 text-lg font-bold text-white placeholder-neutral-700 focus:border-green-500 focus:outline-none rounded-none transition-colors"
+                />
+              </div>
+
+              {/* Frequency Toggle */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">FREQUENCY</label>
+                <div className="flex w-full border-2 border-neutral-800">
+                  <button
+                    onClick={() => setCreateData({ ...createData, period: 'daily' })}
+                    className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${createData.period === 'daily'
+                      ? 'bg-neutral-100 text-black'
+                      : 'bg-transparent text-neutral-500 hover:text-neutral-300'
+                      }`}
+                  >
+                    Every Day
+                  </button>
+                  <div className="w-[2px] bg-neutral-800"></div>
+                  <button
+                    onClick={() => setCreateData({ ...createData, period: 'weekly', frequency_days: 3 })}
+                    className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${createData.period === 'weekly'
+                      ? 'bg-neutral-100 text-black'
+                      : 'bg-transparent text-neutral-500 hover:text-neutral-300'
+                      }`}
+                  >
+                    Weekly
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekly Days Selector (Only if Weekly) */}
+              {createData.period === 'weekly' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    DAYS PER WEEK: <span className="text-white text-lg ml-2">{createData.frequency_days}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="7"
+                    step="1"
+                    value={createData.frequency_days}
+                    onChange={(e) => setCreateData({ ...createData, frequency_days: parseInt(e.target.value) })}
+                    className="w-full accent-green-500 h-2 bg-neutral-800 rounded-none appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-neutral-600 font-mono mt-1">
+                    <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Break Habit Toggle */}
+              <div className="pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-6 h-6 border-2 flex items-center justify-center transition-colors ${createData.break_habit ? 'bg-red-500 border-red-500' : 'border-neutral-700 bg-transparent group-hover:border-neutral-500'
+                    }`}>
+                    {createData.break_habit && <X size={16} className="text-white" />}
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={createData.break_habit}
+                    onChange={(e) => setCreateData({ ...createData, break_habit: e.target.checked })}
+                    className="hidden"
+                  />
+                  <div>
+                    <span className="font-bold uppercase text-sm text-neutral-300 group-hover:text-white transition-colors">Break a bad habit</span>
+                    <p className="text-[10px] text-neutral-600 font-medium uppercase mt-0.5">Colors will fade as you succeed</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={() => setShowingCreateModal(false)}
+                  className="flex-1 py-4 border-2 border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider hover:bg-neutral-800 hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addHabit}
+                  className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
+                >
+                  Create Habit
                 </button>
               </div>
             </div>
