@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Habit tracking for your daily life',
   generator: 'v0.app',
   icons: {
-    icon: '/logomarca.png',
-    apple: '/logomarca.png',
+    icon: '/logomarca.svg',
+    apple: '/logomarca.svg',
   },
 }
 

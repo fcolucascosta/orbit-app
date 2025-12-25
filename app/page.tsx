@@ -451,7 +451,7 @@ export default function HabitTracker() {
       <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logomarca.png" alt="Orbit" className="w-9 h-9 rounded" />
+            <img src="/logomarca.svg" alt="Everyday Logo" className="w-8 h-8 rounded-none" />
             <h1 className="text-xl font-semibold">Orbit</h1>
           </div>
           <button
