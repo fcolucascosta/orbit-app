@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { toast, Toaster } from "sonner"
 import {
   Plus,
   ChevronLeft,
@@ -213,6 +214,7 @@ export default function HabitTracker() {
         // Rollback: restaurar estado anterior
         setCompletions(previousCompletions)
         console.error("[Orbit] Erro ao desmarcar hábito:", error.message)
+        toast.error("Failed to remove habit completion")
       }
     } else {
       // Optimistic update: adicionar placeholder imediatamente
@@ -241,6 +243,7 @@ export default function HabitTracker() {
         // Rollback: restaurar estado anterior
         setCompletions(previousCompletions)
         console.error("[Orbit] Erro ao marcar hábito:", error.message)
+        toast.error("Failed to save habit completion")
       } else if (data) {
         // Substituir temp pelo ID real do banco
         setCompletions((prev) => prev.map((c) => (c.id === tempId ? data : c)))
@@ -349,6 +352,9 @@ export default function HabitTracker() {
         frequency_days: 1,
         period: "daily"
       })
+      toast.success("Habit created successfully")
+    } else {
+      toast.error("Failed to create habit")
     }
   }
 
@@ -390,6 +396,9 @@ export default function HabitTracker() {
       setCompletions(completions.filter((c) => c.habit_id !== habitId))
       setEditingHabit(null)
       setConfirmingDelete(null)
+      toast.success("Habit deleted successfully")
+    } else {
+      toast.error("Failed to delete habit")
     }
   }
 
@@ -404,6 +413,9 @@ export default function HabitTracker() {
         h.id === habitId ? { ...h, archived: true, archived_at: new Date().toISOString() } : h
       ))
       setEditingHabit(null)
+      toast.success("Habit archived successfully")
+    } else {
+      toast.error("Failed to archive habit")
     }
   }
 
@@ -417,6 +429,9 @@ export default function HabitTracker() {
       setHabits(habits.map((h) =>
         h.id === habitId ? { ...h, archived: false, archived_at: undefined } : h
       ))
+      toast.success("Habit restored successfully")
+    } else {
+      toast.error("Failed to restore habit")
     }
   }
 
@@ -439,6 +454,9 @@ export default function HabitTracker() {
     if (!error) {
       setHabits(habits.map((h) => (h.id === editingHabit.id ? { ...h, ...updates } : h)))
       setEditingHabit(null)
+      toast.success("Habit updated successfully")
+    } else {
+      toast.error("Failed to update habit")
     }
   }
 
@@ -590,7 +608,9 @@ export default function HabitTracker() {
   const displayedHabits = showArchived ? archivedHabits : activeHabits
 
   return (
-    <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
+    <>
+      <Toaster position="top-right" duration={3000} />
+      <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
       <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1153,5 +1173,6 @@ export default function HabitTracker() {
         </div>
       )}
     </div>
+    </>
   )
 }
