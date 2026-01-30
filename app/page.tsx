@@ -13,6 +13,8 @@ import {
   X,
   GripVertical,
   LogOut,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react"
 
 type Habit = {
@@ -24,6 +26,8 @@ type Habit = {
   break_habit?: boolean
   frequency_days?: number
   period?: "daily" | "weekly"
+  archived?: boolean
+  archived_at?: string
 }
 
 type HabitCompletion = {
@@ -60,6 +64,9 @@ export default function HabitTracker() {
   const [showingColorPicker, setShowingColorPicker] = useState<string | null>(null)
   const [draggedHabit, setDraggedHabit] = useState<string | null>(null)
   const [visibleDays, setVisibleDays] = useState(11)
+  const [showArchived, setShowArchived] = useState(false)
+  const [clickedCell, setClickedCell] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
 
   // Creation Modal State
   const [showingCreateModal, setShowingCreateModal] = useState(false)
@@ -195,14 +202,31 @@ export default function HabitTracker() {
     const existingCompletion = completions.find((c) => c.habit_id === habitId && c.date === dateKey)
 
     if (existingCompletion) {
-      // Remover completion
+      // Optimistic update: remover imediatamente da UI
+      const previousCompletions = [...completions]
+      setCompletions(completions.filter((c) => c.id !== existingCompletion.id))
+
+      // Remover do banco
       const { error } = await supabase.from("habit_completions").delete().eq("id", existingCompletion.id)
 
-      if (!error) {
-        setCompletions(completions.filter((c) => c.id !== existingCompletion.id))
+      if (error) {
+        // Rollback: restaurar estado anterior
+        setCompletions(previousCompletions)
+        console.error("[Orbit] Erro ao desmarcar hábito:", error.message)
       }
     } else {
-      // Adicionar completion
+      // Optimistic update: adicionar placeholder imediatamente
+      const tempId = `temp-${Date.now()}`
+      const tempCompletion: HabitCompletion = {
+        id: tempId,
+        habit_id: habitId,
+        user_id: userId,
+        date: dateKey,
+      }
+      const previousCompletions = [...completions]
+      setCompletions([...completions, tempCompletion])
+
+      // Adicionar no banco
       const { data, error } = await supabase
         .from("habit_completions")
         .insert({
@@ -213,8 +237,13 @@ export default function HabitTracker() {
         .select()
         .single()
 
-      if (!error && data) {
-        setCompletions([...completions, data])
+      if (error) {
+        // Rollback: restaurar estado anterior
+        setCompletions(previousCompletions)
+        console.error("[Orbit] Erro ao marcar hábito:", error.message)
+      } else if (data) {
+        // Substituir temp pelo ID real do banco
+        setCompletions((prev) => prev.map((c) => (c.id === tempId ? data : c)))
       }
     }
   }
@@ -360,6 +389,34 @@ export default function HabitTracker() {
       setHabits(habits.filter((h) => h.id !== habitId))
       setCompletions(completions.filter((c) => c.habit_id !== habitId))
       setEditingHabit(null)
+      setConfirmingDelete(null)
+    }
+  }
+
+  const archiveHabit = async (habitId: string) => {
+    const { error } = await supabase
+      .from("habits")
+      .update({ archived: true, archived_at: new Date().toISOString() })
+      .eq("id", habitId)
+
+    if (!error) {
+      setHabits(habits.map((h) =>
+        h.id === habitId ? { ...h, archived: true, archived_at: new Date().toISOString() } : h
+      ))
+      setEditingHabit(null)
+    }
+  }
+
+  const unarchiveHabit = async (habitId: string) => {
+    const { error } = await supabase
+      .from("habits")
+      .update({ archived: false, archived_at: null })
+      .eq("id", habitId)
+
+    if (!error) {
+      setHabits(habits.map((h) =>
+        h.id === habitId ? { ...h, archived: false, archived_at: undefined } : h
+      ))
     }
   }
 
@@ -467,10 +524,58 @@ export default function HabitTracker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-neutral-400">Loading your habits...</p>
+      <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
+        {/* Header Skeleton */}
+        <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-neutral-800 animate-pulse" />
+              <div className="w-16 h-6 bg-neutral-800 animate-pulse" />
+            </div>
+            <div className="w-20 h-4 bg-neutral-800 animate-pulse" />
+          </div>
+        </header>
+
+        <div className="flex-1 p-6 overflow-hidden">
+          <div className="flex h-full">
+            {/* Sidebar Skeleton */}
+            <div className="w-1/3 md:w-[264px] flex-shrink-0 border-r-2 border-neutral-800 pr-4 mr-4">
+              <div className="h-16 mb-2" />
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-[52px] bg-neutral-800/50 animate-pulse flex items-center px-3 gap-3">
+                    <div className="w-4 h-4 bg-neutral-700 rounded-full" />
+                    <div className="flex-1 h-4 bg-neutral-700" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid Skeleton */}
+            <div className="w-2/3 md:flex-1">
+              {/* Date Header Skeleton */}
+              <div className="flex h-16 items-end mb-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <div key={i} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                    <div className="w-8 h-3 bg-neutral-800 animate-pulse" />
+                    <div className="w-6 h-5 bg-neutral-800 animate-pulse" />
+                    <div className="w-6 h-2 bg-neutral-800 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Habit Rows Skeleton */}
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((row) => (
+                  <div key={row} className="flex h-[52px] gap-[1px]">
+                    {[1, 2, 3, 4, 5, 6, 7].map((col) => (
+                      <div key={col} className="flex-1 bg-neutral-800/30 animate-pulse" />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -478,6 +583,11 @@ export default function HabitTracker() {
 
   const todayIndex = days.findIndex((date) => isToday(date))
   const isAtEnd = scrollOffset >= todayIndex - visibleDays + 1
+
+  // Filtrar hábitos: mostrar arquivados ou ativos dependendo do toggle
+  const activeHabits = habits.filter((h) => !h.archived)
+  const archivedHabits = habits.filter((h) => h.archived)
+  const displayedHabits = showArchived ? archivedHabits : activeHabits
 
   return (
     <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
@@ -512,14 +622,14 @@ export default function HabitTracker() {
             <div className="flex items-center justify-between h-16 px-3 mb-2" />
 
             <div className="space-y-2">
-              {habits.map((habit) => {
+              {displayedHabits.map((habit) => {
                 const streak = getStreakInfo(habit.id)
                 const colorData = COLOR_PALETTE.find((c) => c.name === habit.color)
 
                 return (
                   <div
                     key={habit.id}
-                    draggable={true}
+                    draggable={!showArchived}
                     onDragStart={() => handleDragStart(habit.id)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleDrop(habit.id)}
@@ -618,20 +728,49 @@ export default function HabitTracker() {
                 )
               })}
 
-              <button
-                onClick={() => setShowingCreateModal(true)}
-                className="w-full h-[52px] flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-all"
-              >
-                <Plus size={18} />
-                <span className="hidden md:inline">New Habit</span>
-              </button>
+              {!showArchived && (
+                <button
+                  onClick={() => setShowingCreateModal(true)}
+                  className="w-full h-[52px] flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-all"
+                >
+                  <Plus size={18} />
+                  <span className="hidden md:inline">New Habit</span>
+                </button>
+              )}
             </div>
 
-            {habits.length === 0 && (
+            {activeHabits.length === 0 && !showArchived && (
               <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
                 <p className="text-lg mb-2">No habits yet</p>
                 <p className="text-sm">Click the + button to add your first habit!</p>
               </div>
+            )}
+
+            {showArchived && archivedHabits.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
+                <p className="text-lg mb-2">No archived habits</p>
+                <p className="text-sm">Archived habits will appear here</p>
+              </div>
+            )}
+
+            {/* Toggle para ver arquivados */}
+            {archivedHabits.length > 0 && (
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className="w-full mt-4 py-2 flex items-center justify-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 border border-neutral-800 hover:border-neutral-700 transition-all"
+              >
+                {showArchived ? (
+                  <>
+                    <ArchiveRestore size={14} />
+                    <span>Show Active ({activeHabits.length})</span>
+                  </>
+                ) : (
+                  <>
+                    <Archive size={14} />
+                    <span>Show Archived ({archivedHabits.length})</span>
+                  </>
+                )}
+              </button>
             )}
           </div>
 
@@ -670,7 +809,7 @@ export default function HabitTracker() {
             </div>
 
             <div className="space-y-2">
-              {habits.map((habit) => (
+              {displayedHabits.map((habit) => (
                 <div key={habit.id} className="flex h-[52px]">
                   {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
                     const dateKey = formatDateKey(date)
@@ -678,13 +817,20 @@ export default function HabitTracker() {
                     const color = getStreakColor(habit.id, date, habit)
                     const isHovered = hoveredCell?.habitId === habit.id && hoveredCell?.dateKey === dateKey
 
+                    const cellKey = `${habit.id}-${dateKey}`
+                    const isClicked = clickedCell === cellKey
+
                     return (
                       <button
                         key={idx}
-                        onClick={() => toggleHabit(habit.id, dateKey)}
+                        onClick={() => {
+                          setClickedCell(cellKey)
+                          toggleHabit(habit.id, dateKey)
+                          setTimeout(() => setClickedCell(null), 300)
+                        }}
                         onMouseEnter={() => setHoveredCell({ habitId: habit.id, dateKey })}
                         onMouseLeave={() => setHoveredCell(null)}
-                        className="flex-1 min-w-0 h-full relative group"
+                        className={`flex-1 min-w-0 h-full relative group ${isClicked ? 'animate-pulse-once' : ''}`}
                         style={{
                           backgroundColor: color || "var(--card)",
                           transition: "background-color 0.2s ease",
@@ -696,7 +842,7 @@ export default function HabitTracker() {
                           </div>
                         )}
 
-                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
+                        <div className={`absolute inset-0 bg-white transition-opacity pointer-events-none ${isClicked ? 'opacity-30' : 'opacity-0 group-hover:opacity-10'}`} />
                       </button>
                     )
                   })}
@@ -813,26 +959,46 @@ export default function HabitTracker() {
               </div>
 
               {/* Actions */}
-              <div className="pt-4 flex gap-3">
-                <button
-                  onClick={() => deleteHabit(editingHabit.id)}
-                  className="flex-1 py-4 border-2 border-red-900/50 text-red-500 font-bold uppercase tracking-wider hover:bg-red-900/20 hover:border-red-500 transition-all"
-                >
-                  Delete
-                </button>
-                <div className="w-2"></div>
-                <button
-                  onClick={() => setEditingHabit(null)}
-                  className="flex-1 py-4 border-2 border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider hover:bg-neutral-800 hover:text-white transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveHabit}
-                  className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
-                >
-                  Save
-                </button>
+              <div className="pt-4 space-y-3">
+                <div className="flex gap-3">
+                  {editingHabit.archived ? (
+                    <button
+                      onClick={() => unarchiveHabit(editingHabit.id)}
+                      className="flex-1 py-4 border-2 border-green-900/50 text-green-500 font-bold uppercase tracking-wider hover:bg-green-900/20 hover:border-green-500 transition-all flex items-center justify-center gap-2"
+                    >
+                      <ArchiveRestore size={18} />
+                      Restore
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => archiveHabit(editingHabit.id)}
+                      className="flex-1 py-4 border-2 border-orange-900/50 text-orange-500 font-bold uppercase tracking-wider hover:bg-orange-900/20 hover:border-orange-500 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Archive size={18} />
+                      Archive
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setConfirmingDelete(editingHabit.id)}
+                    className="flex-1 py-4 border-2 border-red-900/50 text-red-500 font-bold uppercase tracking-wider hover:bg-red-900/20 hover:border-red-500 transition-all"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setEditingHabit(null)}
+                    className="flex-1 py-4 border-2 border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider hover:bg-neutral-800 hover:text-white transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveHabit}
+                    className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -946,6 +1112,40 @@ export default function HabitTracker() {
                   className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
                 >
                   Create Habit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Deleção */}
+      {confirmingDelete && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white rounded-none w-full max-w-sm p-0 border-2 border-red-900/50 shadow-2xl">
+            <div className="p-6 space-y-4">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 border-2 border-red-500 flex items-center justify-center">
+                  <X size={24} className="text-red-500" />
+                </div>
+                <h3 className="text-lg font-bold uppercase tracking-wider text-white mb-2">Delete Habit?</h3>
+                <p className="text-sm text-neutral-400">
+                  This action cannot be undone. All completion data for this habit will be permanently deleted.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setConfirmingDelete(null)}
+                  className="flex-1 py-3 border-2 border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider hover:bg-neutral-800 hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteHabit(confirmingDelete)}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold uppercase tracking-wider hover:bg-red-500 transition-all"
+                >
+                  Delete
                 </button>
               </div>
             </div>
