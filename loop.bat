@@ -1,8 +1,20 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set MAX_LOOPS=20
-set COUNTER_FILE=%~dp0loop-counter.txt
+:: ========================================
+::   RALPH LOOP - Orbit Habit Tracker
+:: ========================================
+
+set MAX_LOOPS=10
+set COUNTER_FILE=%~dp0.loop-counter
+
+:: Comando reset
+if "%1"=="reset" (
+    echo 0 > "%COUNTER_FILE%"
+    echo Contador resetado para 0.
+    pause
+    exit /b 0
+)
 
 :: Inicializa contador se não existir
 if not exist "%COUNTER_FILE%" (
@@ -19,17 +31,9 @@ if %CURRENT% GEQ %MAX_LOOPS% (
     echo   LIMITE DE %MAX_LOOPS% LOOPS ATINGIDO!
     echo ========================================
     echo.
-    echo Para resetar, delete loop-counter.txt
-    echo ou execute: loop.bat reset
+    echo Para resetar: loop.bat reset
     echo.
     pause
-    exit /b 0
-)
-
-:: Comando reset
-if "%1"=="reset" (
-    echo 0 > "%COUNTER_FILE%"
-    echo Contador resetado para 0.
     exit /b 0
 )
 
@@ -43,16 +47,17 @@ echo ========================================
 echo   RALPH LOOP - Orbit Habit Tracker
 echo ========================================
 echo.
-echo   Loop atual: %NEXT% de %MAX_LOOPS%
-echo   Restantes:  !MAX_LOOPS! - !NEXT! = %MAX_LOOPS%-%NEXT%
+echo   Loop #%NEXT% de %MAX_LOOPS%
 echo.
 echo ========================================
 echo.
 echo Proximos passos:
-echo   1. Abra current-task.md para ver a tarefa
+echo   1. Leia RALPH-LOOP.md para ver a tarefa
 echo   2. Implemente a tarefa
-echo   3. Atualize changelog.md
+echo   3. Atualize RALPH-CHANGELOG.md
 echo   4. Execute este script novamente
+echo.
+echo Para resetar: loop.bat reset
 echo.
 echo ========================================
 echo.
