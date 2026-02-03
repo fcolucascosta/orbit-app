@@ -40,38 +40,49 @@ export default function HabitStatsPage({ params }: { params: Promise<{ id: strin
         totalDays: 0,
         completionRate: 0,
     })
+    const [insights, setInsights] = useState({
+        last7Days: 0,
+        last30Days: 0,
+        activeWeeks: 0,
+        bestWeekday: "—",
+    })
 
     useEffect(() => {
         loadData()
     }, [id])
 
     const loadData = async () => {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
             router.push("/auth/login")
             return
         }
 
-        // Load Habit
-        const { data: habitData } = await supabase
-            .from("habits")
-            .select("*")
-            .eq("id", id)
-            .single()
+        const [habitResponse, completionsResponse] = await Promise.all([
+            supabase
+                .from("habits")
+                .select("*")
+                .eq("id", id)
+                .single(),
+            supabase
+                .from("habit_completions")
+                .select("date")
+                .eq("habit_id", id)
+                .eq("user_id", user.id)
+        ])
 
-        setHabit(habitData)
+        setHabit(habitResponse.data)
 
-        // Load Completions
-        const { data: completionsData } = await supabase
-            .from("habit_completions")
-            .select("date")
-            .eq("habit_id", id)
-            .eq("user_id", user.id)
-
-        if (completionsData) {
-            const dates = new Set(completionsData.map(c => c.date))
+        if (completionsResponse.data) {
+            const dates = new Set(completionsResponse.data.map(c => c.date))
             setCompletions(dates)
             calculateStats(dates)
+            calculateInsights(dates)
+        } else {
+            setCompletions(new Set())
+            calculateStats(new Set())
+            calculateInsights(new Set())
         }
 
         setLoading(false)
@@ -126,6 +137,60 @@ export default function HabitStatsPage({ params }: { params: Promise<{ id: strin
             longestStreak: longest,
             totalDays: dates.size,
             completionRate: Math.round((dates.size / 365) * 100)
+        })
+    }
+
+    const calculateInsights = (dates: Set<string>) => {
+        const today = new Date()
+        const weekdayCounts = Array(7).fill(0)
+        let last7Days = 0
+        let last30Days = 0
+
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(today)
+            day.setDate(today.getDate() - i)
+            const key = day.toISOString().split("T")[0]
+            if (dates.has(key)) last7Days++
+        }
+
+        for (let i = 0; i < 30; i++) {
+            const day = new Date(today)
+            day.setDate(today.getDate() - i)
+            const key = day.toISOString().split("T")[0]
+            if (dates.has(key)) last30Days++
+        }
+
+        dates.forEach((date) => {
+            const parsed = new Date(`${date}T00:00:00`)
+            weekdayCounts[parsed.getDay()] += 1
+        })
+
+        const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        const bestWeekdayIndex = weekdayCounts.findIndex(count => count === Math.max(...weekdayCounts))
+
+        const weeksToCheck = 12
+        let activeWeeks = 0
+        for (let weekIndex = 0; weekIndex < weeksToCheck; weekIndex++) {
+            const startOfWeek = new Date(today)
+            startOfWeek.setDate(today.getDate() - today.getDay() - (weekIndex * 7))
+            let weekHasCompletion = false
+            for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+                const day = new Date(startOfWeek)
+                day.setDate(startOfWeek.getDate() + dayOffset)
+                const key = day.toISOString().split("T")[0]
+                if (dates.has(key)) {
+                    weekHasCompletion = true
+                    break
+                }
+            }
+            if (weekHasCompletion) activeWeeks++
+        }
+
+        setInsights({
+            last7Days,
+            last30Days,
+            activeWeeks,
+            bestWeekday: weekdayCounts.every(count => count === 0) ? "—" : weekdayNames[bestWeekdayIndex],
         })
     }
 
@@ -188,11 +253,18 @@ export default function HabitStatsPage({ params }: { params: Promise<{ id: strin
             </header>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                 <StatCard label="CURRENT STREAK" value={`${stats.currentStreak} DAYS`} icon={<Zap size={20} />} color={habitColor} />
                 <StatCard label="LONGEST STREAK" value={`${stats.longestStreak} DAYS`} icon={<Trophy size={20} />} />
                 <StatCard label="TOTAL DAYS" value={stats.totalDays} icon={<Calendar size={20} />} />
                 <StatCard label="COMPLETION RATE" value={`${stats.completionRate}%`} icon={<Target size={20} />} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+                <StatCard label="LAST 7 DAYS" value={`${insights.last7Days}/7`} icon={<Zap size={18} />} color={habitColor} />
+                <StatCard label="LAST 30 DAYS" value={`${insights.last30Days}/30`} icon={<Target size={18} />} />
+                <StatCard label="BEST DAY" value={insights.bestWeekday} icon={<Calendar size={18} />} />
+                <StatCard label="ACTIVE WEEKS (12)" value={`${insights.activeWeeks}/12`} icon={<Trophy size={18} />} />
             </div>
 
             {/* Contribution Grid Visualization */}
