@@ -713,6 +713,12 @@ export default function HabitTracker() {
                       ) : (
                         streak > 0 && <div className="text-xs opacity-75 mt-0.5 md:mt-0">{streak}d</div>
                       )}
+                      {navigatingHabitId === habit.id && (
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-neutral-400 mt-1 md:mt-0">
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border border-neutral-500 border-t-transparent" />
+                          Opening analytics...
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
