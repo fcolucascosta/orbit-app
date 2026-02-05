@@ -56,7 +56,7 @@ export default function HabitTracker() {
   const [showArchived, setShowArchived] = useState(false)
   const [clickedCell, setClickedCell] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
-  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null)
+  const [navigatingHabitId, setNavigatingHabitId] = useState<string | null>(null)
 
   // Creation Modal State
   const [showingCreateModal, setShowingCreateModal] = useState(false)
@@ -669,7 +669,10 @@ export default function HabitTracker() {
 
                     <div
                       className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-center md:justify-between mr-2 cursor-pointer group/label"
-                      onClick={() => setSelectedHabitId(habit.id)}
+                      onClick={() => {
+                        setNavigatingHabitId(habit.id)
+                        router.push(`/habit/${habit.id}`)
+                      }}
                     >
                       <span className="text-sm font-medium truncate group-hover/label:text-primary transition-colors">
                         {habit.name}
@@ -712,6 +715,12 @@ export default function HabitTracker() {
                         </div>
                       ) : (
                         streak > 0 && <div className="text-xs opacity-75 mt-0.5 md:mt-0">{streak}d</div>
+                      )}
+                      {navigatingHabitId === habit.id && (
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-neutral-400 mt-1 md:mt-0">
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border border-neutral-500 border-t-transparent" />
+                          Opening analytics...
+                        </div>
                       )}
                     </div>
                   </div>
