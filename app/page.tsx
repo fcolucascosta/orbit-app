@@ -1,5 +1,6 @@
 "use client"
 
+import { HabitAnalytics } from "@/components/habit-analytics"
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -81,6 +82,7 @@ export default function HabitTracker() {
   const [clickedCell, setClickedCell] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   const [navigatingHabitId, setNavigatingHabitId] = useState<string | null>(null)
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null)
 
   // Creation Modal State
   const [showingCreateModal, setShowingCreateModal] = useState(false)
@@ -666,10 +668,12 @@ export default function HabitTracker() {
                       onDragStart={() => handleDragStart(habit.id)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleDrop(habit.id)}
-                      className="relative flex items-center gap-2 h-[52px] px-3 rounded-none transition-all border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50"
+                      className="relative flex items-center gap-2 h-[52px] px-3 rounded-none transition-all border-b border-neutral-800 last:border-0 hover:bg-[hsl(var(--habit-hue),100%,15%,0.5)] group"
                       style={{
                         backgroundColor: colorData?.value ? `${colorData.value}20` : "var(--secondary)",
-                      }}
+                        "--habit-hue": colorData?.hue || 0,
+                        "--habit-color": colorData?.value || "#fff",
+                      } as React.CSSProperties}
                     >
                       <button className="cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity hidden md:block">
                         <GripVertical size={18} className="text-neutral-500" />
@@ -713,11 +717,10 @@ export default function HabitTracker() {
                       <div
                         className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-center md:justify-between mr-2 cursor-pointer group/label"
                         onClick={() => {
-                          setNavigatingHabitId(habit.id)
-                          router.push(`/habit/${habit.id}`)
+                          setSelectedHabitId(habit.id)
                         }}
                       >
-                        <span className="text-sm font-medium truncate group-hover/label:text-primary transition-colors">
+                        <span className="text-sm font-medium truncate text-neutral-400 group-hover:text-[var(--habit-color)] transition-colors">
                           {habit.name}
                         </span>
                         {/* Streak or Weekly Goal Progress */}
@@ -759,12 +762,7 @@ export default function HabitTracker() {
                         ) : (
                           streak > 0 && <div className="text-xs opacity-75 mt-0.5 md:mt-0">{streak}d</div>
                         )}
-                        {navigatingHabitId === habit.id && (
-                          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-neutral-400 mt-1 md:mt-0">
-                            <span className="inline-block h-3 w-3 animate-spin rounded-full border border-neutral-500 border-t-transparent" />
-                            Opening analytics...
-                          </div>
-                        )}
+                        {/* Removed navigatingHabitId spinner */}
                       </div>
                     </div>
                   )
@@ -862,6 +860,10 @@ export default function HabitTracker() {
                       const cellKey = `${habit.id}-${dateKey}`
                       const isClicked = clickedCell === cellKey
 
+                      // Get base color for tooltip (regardless of completion status)
+                      const habitColorData = COLOR_PALETTE.find(c => c.name === habit.color)
+                      const baseColor = habitColorData?.value || '#fff'
+
                       return (
                         <button
                           key={idx}
@@ -879,8 +881,15 @@ export default function HabitTracker() {
                           }}
                         >
                           {isHovered && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 text-white text-xs rounded whitespace-nowrap z-20 pointer-events-none">
-                              {formatDateDisplay(date).month} {formatDateDisplay(date).day}
+                            <div
+                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 text-xs rounded whitespace-nowrap z-20 pointer-events-none border"
+                              style={{
+                                borderColor: baseColor,
+                              }}
+                            >
+                              <span className="font-bold mr-1" style={{ color: baseColor }}>{habit.name}</span>
+                              <span className="text-neutral-500">•</span>
+                              <span className="ml-1 text-white">{formatDateDisplay(date).month} {formatDateDisplay(date).day}</span>
                             </div>
                           )}
 
@@ -1195,6 +1204,20 @@ export default function HabitTracker() {
           </div>
         )}
       </div>
+
+      {selectedHabitId && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[70] p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-neutral-900 text-white w-full max-w-5xl max-h-[90vh] overflow-y-auto border-2 border-neutral-800 shadow-2xl relative">
+            <button
+              onClick={() => setSelectedHabitId(null)}
+              className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors z-50 bg-black/50 p-2 rounded-full"
+            >
+              <X size={24} />
+            </button>
+            <HabitAnalytics habitId={selectedHabitId} />
+          </div>
+        </div>
+      )}
     </>
   )
 }
