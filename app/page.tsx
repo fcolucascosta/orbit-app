@@ -4,6 +4,8 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import HabitAnalytics from "@/components/HabitAnalytics"
+import { HABIT_COLOR_PALETTE } from "@/lib/habit-colors"
 import {
   Plus,
   ChevronLeft,
@@ -37,19 +39,6 @@ type HabitCompletion = {
   user_id: string
 }
 
-const COLOR_PALETTE = [
-  { name: "neon-green", value: "#00FF94", hue: 150 },
-  { name: "neon-cyan", value: "#00F0FF", hue: 180 },
-  { name: "electric-blue", value: "#2979FF", hue: 220 },
-  { name: "deep-purple", value: "#651FFF", hue: 260 },
-  { name: "neon-violet", value: "#D500F9", hue: 290 },
-  { name: "hot-pink", value: "#FF00E6", hue: 320 },
-  { name: "bright-red", value: "#FF1744", hue: 350 },
-  { name: "neon-orange", value: "#FF6D00", hue: 30 },
-  { name: "bright-yellow", value: "#FFD600", hue: 50 },
-  { name: "lime", value: "#C6FF00", hue: 80 },
-]
-
 export default function HabitTracker() {
   const router = useRouter()
   const supabase = createClient()
@@ -67,6 +56,7 @@ export default function HabitTracker() {
   const [showArchived, setShowArchived] = useState(false)
   const [clickedCell, setClickedCell] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null)
 
   // Creation Modal State
   const [showingCreateModal, setShowingCreateModal] = useState(false)
@@ -299,7 +289,7 @@ export default function HabitTracker() {
     }
 
     const streakLength = streakDays.length
-    const colorData = COLOR_PALETTE.find((c) => c.name === habit.color)
+    const colorData = HABIT_COLOR_PALETTE.find((c) => c.name === habit.color)
     const baseHue = colorData?.hue || 120
 
     // Calcular intensidade: 0 (primeiro dia/mais antigo) até 1 (último dia/mais recente)
@@ -624,7 +614,7 @@ export default function HabitTracker() {
             <div className="space-y-2">
               {displayedHabits.map((habit) => {
                 const streak = getStreakInfo(habit.id)
-                const colorData = COLOR_PALETTE.find((c) => c.name === habit.color)
+                const colorData = HABIT_COLOR_PALETTE.find((c) => c.name === habit.color)
 
                 return (
                   <div
@@ -661,7 +651,7 @@ export default function HabitTracker() {
 
                     {showingColorPicker === habit.id && (
                       <div className="absolute left-0 md:left-12 top-14 z-50 bg-neutral-900 rounded-none shadow-xl p-2 flex flex-wrap gap-2 max-w-[200px]">
-                        {COLOR_PALETTE.map((color) => (
+                        {HABIT_COLOR_PALETTE.map((color) => (
                           <button
                             key={color.name}
                             onClick={(e) => {
@@ -679,7 +669,7 @@ export default function HabitTracker() {
 
                     <div
                       className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-center md:justify-between mr-2 cursor-pointer group/label"
-                      onClick={() => router.push(`/habit/${habit.id}`)}
+                      onClick={() => setSelectedHabitId(habit.id)}
                     >
                       <span className="text-sm font-medium truncate group-hover/label:text-primary transition-colors">
                         {habit.name}
@@ -713,8 +703,8 @@ export default function HabitTracker() {
                                 key={i}
                                 className={`w-2 h-2 rounded-none border ${isCompleted ? `bg-${habit.color}-500 border-${habit.color}-500` : 'border-neutral-600 bg-transparent'}`}
                                 style={{
-                                  backgroundColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : 'transparent',
-                                  borderColor: isCompleted ? (COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : '#525252'
+                                  backgroundColor: isCompleted ? (HABIT_COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : 'transparent',
+                                  borderColor: isCompleted ? (HABIT_COLOR_PALETTE.find(c => c.name === habit.color)?.value || '#fff') : '#525252'
                                 }}
                               />
                             )
@@ -838,7 +828,10 @@ export default function HabitTracker() {
                       >
                         {isHovered && (
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 text-white text-xs rounded whitespace-nowrap z-20 pointer-events-none">
-                            {formatDateDisplay(date).month} {formatDateDisplay(date).day}
+                            <div className="font-semibold">{habit.name}</div>
+                            <div className="text-[10px] text-neutral-400">
+                              {formatDateDisplay(date).month} {formatDateDisplay(date).day}
+                            </div>
                           </div>
                         )}
 
@@ -1115,6 +1108,18 @@ export default function HabitTracker() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {selectedHabitId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white rounded-none w-full max-w-5xl border-2 border-neutral-800 shadow-2xl">
+            <HabitAnalytics
+              habitId={selectedHabitId}
+              layout="modal"
+              onClose={() => setSelectedHabitId(null)}
+            />
           </div>
         </div>
       )}
