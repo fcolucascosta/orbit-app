@@ -17,6 +17,7 @@ import {
   LogOut,
   Archive,
   ArchiveRestore,
+  Palmtree,
 } from "lucide-react"
 
 type Habit = {
@@ -37,6 +38,20 @@ type HabitCompletion = {
   habit_id: string
   date: string
   user_id: string
+}
+
+type HabitSkip = {
+  id: string
+  habit_id: string
+  date: string
+  user_id: string
+}
+
+type Vacation = {
+  id: string
+  user_id: string
+  start_date: string
+  end_date: string
 }
 
 const COLOR_PALETTE = [
@@ -70,6 +85,8 @@ export default function HabitTracker() {
 
   const [habits, setHabits] = useState<Habit[]>([])
   const [completions, setCompletions] = useState<HabitCompletion[]>([])
+  const [skips, setSkips] = useState<HabitSkip[]>([])
+  const [vacations, setVacations] = useState<Vacation[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [scrollOffset, setScrollOffset] = useState(0)
@@ -98,6 +115,13 @@ export default function HabitTracker() {
     break_habit: false,
     frequency_days: 1,
     period: "daily"
+  })
+
+  // Vacation Modal State
+  const [showingVacationModal, setShowingVacationModal] = useState(false)
+  const [vacationDates, setVacationDates] = useState({
+    startDate: "",
+    endDate: ""
   })
 
   useEffect(() => {
@@ -163,6 +187,25 @@ export default function HabitTracker() {
       } else {
         setCompletions(completionsData || [])
       }
+
+      // Load Skips
+      const { data: skipsData } = await supabase
+        .from("habit_skips")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`)
+        .lte("date", `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`)
+
+      setSkips(skipsData || [])
+
+      // Load Vacations
+      const { data: vacationsData } = await supabase
+        .from("vacations")
+        .select("*")
+        .eq("user_id", user.id)
+
+      setVacations(vacationsData || [])
+
     } catch (error) {
       console.error("[v0] Error loading user data:", error)
     } finally {
@@ -216,54 +259,78 @@ export default function HabitTracker() {
     if (!userId) return
 
     const existingCompletion = completions.find((c) => c.habit_id === habitId && c.date === dateKey)
+    const existingSkip = skips.find((s) => s.habit_id === habitId && s.date === dateKey)
 
+    // STATE 1: COMPLETE -> SKIP
     if (existingCompletion) {
-      // Optimistic update: remover imediatamente da UI
+      // Optimistic: Remove Completion, Add Skip
       const previousCompletions = [...completions]
+      const previousSkips = [...skips]
+
       setCompletions(completions.filter((c) => c.id !== existingCompletion.id))
 
-      // Remover do banco
-      const { error } = await supabase.from("habit_completions").delete().eq("id", existingCompletion.id)
+      const tempSkipId = `temp-skip-${Date.now()}`
+      const tempSkip: HabitSkip = { id: tempSkipId, user_id: userId, habit_id: habitId, date: dateKey }
+      setSkips([...skips, tempSkip])
 
-      if (error) {
-        // Rollback: restaurar estado anterior
-        setCompletions(previousCompletions)
-        console.error("[Orbit] Erro ao desmarcar hábito:", error.message)
-        toast.error("Failed to remove habit completion")
-      }
-    } else {
-      // Optimistic update: adicionar placeholder imediatamente
-      const tempId = `temp-${Date.now()}`
-      const tempCompletion: HabitCompletion = {
-        id: tempId,
-        habit_id: habitId,
-        user_id: userId,
-        date: dateKey,
-      }
-      const previousCompletions = [...completions]
-      setCompletions([...completions, tempCompletion])
+      // DB: Delete Completion
+      await supabase.from("habit_completions").delete().eq("id", existingCompletion.id)
 
-      // Adicionar no banco
-      const { data, error } = await supabase
-        .from("habit_completions")
-        .insert({
-          habit_id: habitId,
-          user_id: userId,
-          date: dateKey,
-        })
+      // DB: Insert Skip
+      const { data: skipData, error: skipError } = await supabase
+        .from("habit_skips")
+        .insert({ user_id: userId, habit_id: habitId, date: dateKey })
         .select()
         .single()
 
-      if (error) {
-        // Rollback: restaurar estado anterior
+      if (skipError) {
         setCompletions(previousCompletions)
-        console.error("[Orbit] Erro ao marcar hábito:", error.message)
-        toast.error("Failed to save habit completion")
+        setSkips(previousSkips)
+        toast.error("Failed to skip habit")
+      } else if (skipData) {
+        setSkips(prev => prev.map(s => s.id === tempSkipId ? skipData : s))
+      }
+    }
+    // STATE 2: SKIP -> EMPTY
+    else if (existingSkip) {
+      // Optimistic: Remove Skip
+      const previousSkips = [...skips]
+      setSkips(skips.filter(s => s.id !== existingSkip.id))
+
+      // DB: Delete Skip
+      const { error } = await supabase.from("habit_skips").delete().eq("id", existingSkip.id)
+
+      if (error) {
+        setSkips(previousSkips)
+        toast.error("Failed to unskip habit")
+      }
+    }
+    // STATE 3: EMPTY -> COMPLETE
+    else {
+      // Optimistic: Add Completion
+      const tempId = `temp-${Date.now()}`
+      const tempCompletion: HabitCompletion = { id: tempId, habit_id: habitId, user_id: userId, date: dateKey }
+      const previousCompletions = [...completions]
+      setCompletions([...completions, tempCompletion])
+
+      // DB: Insert Completion
+      const { data, error } = await supabase.from("habit_completions").insert({ habit_id: habitId, user_id: userId, date: dateKey }).select().single()
+
+      if (error) {
+        setCompletions(previousCompletions)
+        toast.error("Failed to complete habit")
       } else if (data) {
-        // Substituir temp pelo ID real do banco
         setCompletions((prev) => prev.map((c) => (c.id === tempId ? data : c)))
       }
     }
+  }
+
+  const isHabitSkipped = (habitId: string, dateKey: string) => {
+    return skips.some((s) => s.habit_id === habitId && s.date === dateKey)
+  }
+
+  const isVacation = (dateKey: string) => {
+    return vacations.some(v => dateKey >= v.start_date && dateKey <= v.end_date)
   }
 
   const isHabitCompleted = (habitId: string, dateKey: string) => {
@@ -273,8 +340,21 @@ export default function HabitTracker() {
   const getStreakColor = (habitId: string, date: Date, habit: Habit) => {
     const dateKey = formatDateKey(date)
     const isChecked = isHabitCompleted(habitId, dateKey)
+    const isSkipped = isHabitSkipped(habitId, dateKey)
+    const isOnVacation = isVacation(dateKey)
 
-    if (!isChecked) {
+    if (isChecked) {
+      // Continue to gradient logic
+    } else if (isSkipped) {
+      return "#404040" // Neutral gray
+    } else if (isOnVacation) {
+      // "Ghost" color: Habit base color but desaturated and dark
+      const colorData = COLOR_PALETTE.find((c) => c.name === habit.color)
+      const baseHue = colorData?.hue || 120
+      // Normal Saturation ~75%, Lightness ~40-80%
+      // Ghost: Saturation 30% (less than half), Lightness 25% (visible but dark)
+      return `hsl(${baseHue}, 30%, 25%)`
+    } else {
       return "transparent"
     }
 
@@ -392,8 +472,12 @@ export default function HabitTracker() {
 
     while (true) {
       const key = formatDateKey(checkDate)
+
       if (isHabitCompleted(habitId, key)) {
         currentStreak++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else if (isHabitSkipped(habitId, key) || isVacation(key)) {
+        // Freeze streak: don't increment, just move back
         checkDate.setDate(checkDate.getDate() - 1)
       } else {
         break
@@ -402,6 +486,8 @@ export default function HabitTracker() {
 
     return currentStreak
   }
+
+
 
   const deleteHabit = async (habitId: string) => {
     const { error } = await supabase.from("habits").delete().eq("id", habitId)
@@ -481,6 +567,29 @@ export default function HabitTracker() {
     if (!error) {
       setHabits(habits.map((h) => (h.id === habitId ? { ...h, color } : h)))
       setShowingColorPicker(null)
+    }
+  }
+
+  const handleSaveVacation = async () => {
+    if (!vacationDates.startDate || !vacationDates.endDate || !userId) return
+
+    const { data, error } = await supabase
+      .from("vacations")
+      .insert({
+        user_id: userId,
+        start_date: vacationDates.startDate,
+        end_date: vacationDates.endDate
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setVacations([...vacations, data])
+      setShowingVacationModal(false)
+      setVacationDates({ startDate: "", endDate: "" })
+      toast.success("Vacation mode set successfully")
+    } else {
+      toast.error("Failed to set vacation")
     }
   }
 
@@ -646,6 +755,14 @@ export default function HabitTracker() {
               >
                 <LogOut size={16} />
                 Sign out
+              </button>
+              <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
+              <button
+                onClick={() => setShowingVacationModal(true)}
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                title="Vacation Mode"
+              >
+                <Palmtree size={18} />
               </button>
             </div>
           </div>
@@ -854,6 +971,9 @@ export default function HabitTracker() {
                     {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
                       const dateKey = formatDateKey(date)
                       const isChecked = isHabitCompleted(habit.id, dateKey)
+                      const isSkipped = isHabitSkipped(habit.id, dateKey)
+                      const isOnVacation = isVacation(dateKey)
+
                       const color = getStreakColor(habit.id, date, habit)
                       const isHovered = hoveredCell?.habitId === habit.id && hoveredCell?.dateKey === dateKey
 
@@ -878,8 +998,19 @@ export default function HabitTracker() {
                           style={{
                             backgroundColor: color || "var(--card)",
                             transition: "background-color 0.2s ease",
+                            border: "none",
+                            // Subtle glow only (no border)
+                            boxShadow: isOnVacation && isChecked ? `0 0 15px ${baseColor}60` : "none",
+                            opacity: 1 // Always full opacity now that we use ghost colors
                           }}
                         >
+                          {/* Skipped Icon */}
+                          {isSkipped && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+                            </div>
+                          )}
+
                           {isHovered && (
                             <div
                               className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 text-xs rounded whitespace-nowrap z-20 pointer-events-none border"
@@ -1171,6 +1302,58 @@ export default function HabitTracker() {
         )}
 
         {/* Modal de Confirmação de Deleção */}
+        {showingVacationModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+            <div className="bg-neutral-900 text-white rounded-none w-full max-w-sm p-0 border-2 border-neutral-800 shadow-2xl">
+              <div className="flex items-center justify-between p-6 border-b-2 border-neutral-800 bg-neutral-900">
+                <h2 className="text-xl font-bold uppercase tracking-wider text-white">VACATION MODE</h2>
+                <button
+                  onClick={() => setShowingVacationModal(false)}
+                  className="text-neutral-500 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <p className="text-sm text-neutral-400">
+                  Going away? Set a vacation period. Your streak will be frozen (not broken) during these days.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">START DATE</label>
+                    <input
+                      type="date"
+                      value={vacationDates.startDate}
+                      onChange={(e) => setVacationDates({ ...vacationDates, startDate: e.target.value })}
+                      className="w-full bg-black border-2 border-neutral-800 p-3 text-white focus:border-green-500 focus:outline-none rounded-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">END DATE</label>
+                    <input
+                      type="date"
+                      value={vacationDates.endDate}
+                      onChange={(e) => setVacationDates({ ...vacationDates, endDate: e.target.value })}
+                      className="w-full bg-black border-2 border-neutral-800 p-3 text-white focus:border-green-500 focus:outline-none rounded-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={handleSaveVacation}
+                    className="w-full py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
+                  >
+                    Set Vacation
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {confirmingDelete && (
           <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
             <div className="bg-neutral-900 text-white rounded-none w-full max-w-sm p-0 border-2 border-red-900/50 shadow-2xl">
