@@ -89,6 +89,7 @@ export default function HabitTracker() {
   const [visibleDays, setVisibleDays] = useState(11)
   const [showArchived, setShowArchived] = useState(false)
   const [clickedCell, setClickedCell] = useState<string | null>(null)
+  const [processingCells, setProcessingCells] = useState<Set<string>>(new Set())
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   const [navigatingHabitId, setNavigatingHabitId] = useState<string | null>(null)
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null)
@@ -716,7 +717,7 @@ export default function HabitTracker() {
   }
 
   const todayIndex = days.findIndex((date) => isToday(date))
-  const isAtEnd = viewMode === "week" ? weekOffset >= 4 : scrollOffset >= todayIndex - visibleDays + 1
+  const isAtEnd = viewMode === "week" ? weekOffset >= 0 : scrollOffset >= todayIndex - visibleDays + 1
   const isAtStart = viewMode === "week" ? weekOffset <= -25 : scrollOffset === 0
 
   // Computed days based on view mode
@@ -1023,10 +1024,17 @@ export default function HabitTracker() {
                       return (
                         <button
                           key={idx}
-                          onClick={() => {
+                          onClick={async () => {
+                            if (processingCells.has(cellKey)) return
+                            setProcessingCells(prev => new Set(prev).add(cellKey))
                             setClickedCell(cellKey)
-                            toggleHabit(habit.id, dateKey)
+                            await toggleHabit(habit.id, dateKey)
                             setTimeout(() => setClickedCell(null), 300)
+                            setProcessingCells(prev => {
+                              const next = new Set(prev)
+                              next.delete(cellKey)
+                              return next
+                            })
                           }}
                           onMouseEnter={() => setHoveredCell({ habitId: habit.id, dateKey })}
                           onMouseLeave={() => setHoveredCell(null)}
