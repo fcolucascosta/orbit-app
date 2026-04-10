@@ -17,7 +17,7 @@ import {
   LogOut,
   Archive,
   ArchiveRestore,
-  Palmtree,
+  Shuffle,
 } from "lucide-react"
 
 type Habit = {
@@ -45,13 +45,6 @@ type HabitSkip = {
   habit_id: string
   date: string
   user_id: string
-}
-
-type Vacation = {
-  id: string
-  user_id: string
-  start_date: string
-  end_date: string
 }
 
 const COLOR_PALETTE = [
@@ -86,7 +79,6 @@ export default function HabitTracker() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [completions, setCompletions] = useState<HabitCompletion[]>([])
   const [skips, setSkips] = useState<HabitSkip[]>([])
-  const [vacations, setVacations] = useState<Vacation[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [scrollOffset, setScrollOffset] = useState(0)
@@ -100,6 +92,8 @@ export default function HabitTracker() {
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   const [navigatingHabitId, setNavigatingHabitId] = useState<string | null>(null)
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"day" | "week">("day")
+  const [weekOffset, setWeekOffset] = useState(0)
 
   // Creation Modal State
   const [showingCreateModal, setShowingCreateModal] = useState(false)
@@ -115,13 +109,6 @@ export default function HabitTracker() {
     break_habit: false,
     frequency_days: 1,
     period: "daily"
-  })
-
-  // Vacation Modal State
-  const [showingVacationModal, setShowingVacationModal] = useState(false)
-  const [vacationDates, setVacationDates] = useState({
-    startDate: "",
-    endDate: ""
   })
 
   useEffect(() => {
@@ -198,14 +185,6 @@ export default function HabitTracker() {
 
       setSkips(skipsData || [])
 
-      // Load Vacations
-      const { data: vacationsData } = await supabase
-        .from("vacations")
-        .select("*")
-        .eq("user_id", user.id)
-
-      setVacations(vacationsData || [])
-
     } catch (error) {
       console.error("[v0] Error loading user data:", error)
     } finally {
@@ -253,6 +232,21 @@ export default function HabitTracker() {
   const isToday = (date: Date) => {
     const today = new Date()
     return date.toDateString() === today.toDateString()
+  }
+
+  const getWeekDays = (offset: number = 0) => {
+    const today = new Date()
+    // Pegar domingo da semana atual
+    const sunday = new Date(today)
+    sunday.setDate(today.getDate() - today.getDay() + (offset * 7))
+
+    const weekDays = []
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(sunday)
+      day.setDate(sunday.getDate() + i)
+      weekDays.push(day)
+    }
+    return weekDays
   }
 
   const toggleHabit = async (habitId: string, dateKey: string) => {
@@ -329,10 +323,6 @@ export default function HabitTracker() {
     return skips.some((s) => s.habit_id === habitId && s.date === dateKey)
   }
 
-  const isVacation = (dateKey: string) => {
-    return vacations.some(v => dateKey >= v.start_date && dateKey <= v.end_date)
-  }
-
   const isHabitCompleted = (habitId: string, dateKey: string) => {
     return completions.some((c) => c.habit_id === habitId && c.date === dateKey)
   }
@@ -341,19 +331,11 @@ export default function HabitTracker() {
     const dateKey = formatDateKey(date)
     const isChecked = isHabitCompleted(habitId, dateKey)
     const isSkipped = isHabitSkipped(habitId, dateKey)
-    const isOnVacation = isVacation(dateKey)
 
     if (isChecked) {
       // Continue to gradient logic
     } else if (isSkipped) {
       return "#404040" // Neutral gray
-    } else if (isOnVacation) {
-      // "Ghost" color: Habit base color but desaturated and dark
-      const colorData = COLOR_PALETTE.find((c) => c.name === habit.color)
-      const baseHue = colorData?.hue || 120
-      // Normal Saturation ~75%, Lightness ~40-80%
-      // Ghost: Saturation 30% (less than half), Lightness 25% (visible but dark)
-      return `hsl(${baseHue}, 30%, 25%)`
     } else {
       return "transparent"
     }
@@ -454,10 +436,14 @@ export default function HabitTracker() {
   }
 
   const handleScroll = (direction: "left" | "right") => {
-    setScrollOffset((prev) => {
-      const newOffset = direction === "left" ? prev - 1 : prev + 1
-      return Math.max(0, Math.min(newOffset, days.length - visibleDays))
-    })
+    if (viewMode === "week") {
+      setWeekOffset(prev => direction === "left" ? prev - 1 : prev + 1)
+    } else {
+      setScrollOffset((prev) => {
+        const newOffset = direction === "left" ? prev - 1 : prev + 1
+        return Math.max(0, Math.min(newOffset, days.length - visibleDays))
+      })
+    }
   }
 
   const getDayCompletionCount = (date: Date) => {
@@ -476,7 +462,7 @@ export default function HabitTracker() {
       if (isHabitCompleted(habitId, key)) {
         currentStreak++
         checkDate.setDate(checkDate.getDate() - 1)
-      } else if (isHabitSkipped(habitId, key) || isVacation(key)) {
+      } else if (isHabitSkipped(habitId, key)) {
         // Freeze streak: don't increment, just move back
         checkDate.setDate(checkDate.getDate() - 1)
       } else {
@@ -570,26 +556,32 @@ export default function HabitTracker() {
     }
   }
 
-  const handleSaveVacation = async () => {
-    if (!vacationDates.startDate || !vacationDates.endDate || !userId) return
+  const shuffleAllColors = async () => {
+    if (!userId || habits.length === 0) return
 
-    const { data, error } = await supabase
-      .from("vacations")
-      .insert({
-        user_id: userId,
-        start_date: vacationDates.startDate,
-        end_date: vacationDates.endDate
-      })
-      .select()
-      .single()
+    const shuffledColors = [...COLOR_PALETTE].sort(() => Math.random() - 0.5)
 
-    if (!error && data) {
-      setVacations([...vacations, data])
-      setShowingVacationModal(false)
-      setVacationDates({ startDate: "", endDate: "" })
-      toast.success("Vacation mode set successfully")
-    } else {
-      toast.error("Failed to set vacation")
+    const updates = habits.map((habit, index) => ({
+      id: habit.id,
+      color: shuffledColors[index % shuffledColors.length].name
+    }))
+
+    // Optimistic update
+    const previousHabits = [...habits]
+    setHabits(habits.map((habit) => {
+      const update = updates.find(u => u.id === habit.id)
+      return update ? { ...habit, color: update.color } : habit
+    }))
+
+    // Update database
+    try {
+      for (const update of updates) {
+        await supabase.from("habits").update({ color: update.color }).eq("id", update.id)
+      }
+      toast.success("Cores embaralhadas!")
+    } catch {
+      setHabits(previousHabits)
+      toast.error("Falha ao embaralhar cores")
     }
   }
 
@@ -724,7 +716,13 @@ export default function HabitTracker() {
   }
 
   const todayIndex = days.findIndex((date) => isToday(date))
-  const isAtEnd = scrollOffset >= todayIndex - visibleDays + 1
+  const isAtEnd = viewMode === "week" ? weekOffset >= 4 : scrollOffset >= todayIndex - visibleDays + 1
+  const isAtStart = viewMode === "week" ? weekOffset <= -25 : scrollOffset === 0
+
+  // Computed days based on view mode
+  const displayDays = viewMode === "week"
+    ? getWeekDays(weekOffset)
+    : days.slice(scrollOffset, scrollOffset + visibleDays)
 
   // Filtrar hábitos: mostrar arquivados ou ativos dependendo do toggle
   const activeHabits = habits.filter((h) => !h.archived)
@@ -733,7 +731,20 @@ export default function HabitTracker() {
 
   return (
     <>
-      <Toaster position="top-right" duration={3000} />
+      <Toaster
+        position="top-right"
+        duration={3000}
+        toastOptions={{
+          style: {
+            borderRadius: 0,
+            border: '2px solid',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontSize: '12px',
+          },
+        }}
+      />
       <div className="h-[100dvh] bg-background text-white flex flex-col overflow-hidden">
         <header className="border-b-2 border-neutral-800 px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -749,20 +760,45 @@ export default function HabitTracker() {
                 <span className="text-xs">Import Data</span>
               </button>
               <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
+              {/* View Mode Toggle - Brutalista */}
+              <div className="hidden md:flex items-center gap-2">
+                <button
+                  onClick={() => setViewMode("day")}
+                  className={`text-xs font-bold uppercase tracking-widest transition-colors ${
+                    viewMode === "day"
+                      ? "text-white"
+                      : "text-neutral-600 hover:text-neutral-400"
+                  }`}
+                >
+                  Dia
+                </button>
+                <span className="text-neutral-700">/</span>
+                <button
+                  onClick={() => setViewMode("week")}
+                  className={`text-xs font-bold uppercase tracking-widest transition-colors ${
+                    viewMode === "week"
+                      ? "text-white"
+                      : "text-neutral-600 hover:text-neutral-400"
+                  }`}
+                >
+                  Semana
+                </button>
+              </div>
+              <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
+              <button
+                onClick={shuffleAllColors}
+                className="hidden md:flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                title="Embaralhar Cores"
+              >
+                <Shuffle size={18} />
+              </button>
+              <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
               >
                 <LogOut size={16} />
                 Sign out
-              </button>
-              <div className="w-[1px] h-4 bg-neutral-800 hidden md:block"></div>
-              <button
-                onClick={() => setShowingVacationModal(true)}
-                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
-                title="Vacation Mode"
-              >
-                <Palmtree size={18} />
               </button>
             </div>
           </div>
@@ -932,13 +968,14 @@ export default function HabitTracker() {
             </div>
 
             <div className="w-2/3 md:flex-1 relative overflow-hidden">
-              <button
-                onClick={() => handleScroll("left")}
-                className="absolute left-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
-                disabled={scrollOffset === 0}
-              >
-                <ChevronLeft size={16} className="w-3 h-3 md:w-4 md:h-4" />
-              </button>
+              {!isAtStart && (
+                <button
+                  onClick={() => handleScroll("left")}
+                  className="absolute left-0 top-0 md:top-4 w-6 h-6 md:w-8 md:h-8 rounded-none bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors z-20 backdrop-blur-sm"
+                >
+                  <ChevronLeft size={16} className="w-3 h-3 md:w-4 md:h-4" />
+                </button>
+              )}
 
               {!isAtEnd && (
                 <button
@@ -950,7 +987,7 @@ export default function HabitTracker() {
               )}
 
               <div className="flex h-16 items-end mb-2">
-                {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
+                {displayDays.map((date, idx) => {
                   const { month, day, dayName } = formatDateDisplay(date)
                   const today = isToday(date)
                   return (
@@ -968,11 +1005,10 @@ export default function HabitTracker() {
               <div className="space-y-2">
                 {displayedHabits.map((habit) => (
                   <div key={habit.id} className="flex h-[52px]">
-                    {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
+                    {displayDays.map((date, idx) => {
                       const dateKey = formatDateKey(date)
                       const isChecked = isHabitCompleted(habit.id, dateKey)
                       const isSkipped = isHabitSkipped(habit.id, dateKey)
-                      const isOnVacation = isVacation(dateKey)
 
                       const color = getStreakColor(habit.id, date, habit)
                       const isHovered = hoveredCell?.habitId === habit.id && hoveredCell?.dateKey === dateKey
@@ -999,9 +1035,8 @@ export default function HabitTracker() {
                             backgroundColor: color || "var(--card)",
                             transition: "background-color 0.2s ease",
                             border: "none",
-                            // Subtle glow only (no border)
-                            boxShadow: isOnVacation && isChecked ? `0 0 15px ${baseColor}60` : "none",
-                            opacity: 1 // Always full opacity now that we use ghost colors
+                            boxShadow: "none",
+                            opacity: 1
                           }}
                         >
                           {/* Skipped Icon */}
@@ -1033,7 +1068,7 @@ export default function HabitTracker() {
               </div>
 
               <div className="flex h-8 items-center mt-4 border-t border-neutral-800 pt-2">
-                {days.slice(scrollOffset, scrollOffset + visibleDays).map((date, idx) => {
+                {displayDays.map((date, idx) => {
                   const count = getDayCompletionCount(date)
                   return (
                     <div key={idx} className="flex-1 min-w-0 text-center text-xs text-neutral-400">
@@ -1294,59 +1329,6 @@ export default function HabitTracker() {
                     className="flex-1 py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
                   >
                     Create Habit
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Confirmação de Deleção */}
-        {showingVacationModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-            <div className="bg-neutral-900 text-white rounded-none w-full max-w-sm p-0 border-2 border-neutral-800 shadow-2xl">
-              <div className="flex items-center justify-between p-6 border-b-2 border-neutral-800 bg-neutral-900">
-                <h2 className="text-xl font-bold uppercase tracking-wider text-white">VACATION MODE</h2>
-                <button
-                  onClick={() => setShowingVacationModal(false)}
-                  className="text-neutral-500 hover:text-white transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-6">
-                <p className="text-sm text-neutral-400">
-                  Going away? Set a vacation period. Your streak will be frozen (not broken) during these days.
-                </p>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">START DATE</label>
-                    <input
-                      type="date"
-                      value={vacationDates.startDate}
-                      onChange={(e) => setVacationDates({ ...vacationDates, startDate: e.target.value })}
-                      className="w-full bg-black border-2 border-neutral-800 p-3 text-white focus:border-green-500 focus:outline-none rounded-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">END DATE</label>
-                    <input
-                      type="date"
-                      value={vacationDates.endDate}
-                      onChange={(e) => setVacationDates({ ...vacationDates, endDate: e.target.value })}
-                      className="w-full bg-black border-2 border-neutral-800 p-3 text-white focus:border-green-500 focus:outline-none rounded-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={handleSaveVacation}
-                    className="w-full py-4 bg-green-600 text-white font-bold uppercase tracking-wider hover:bg-green-500 transition-all shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)]"
-                  >
-                    Set Vacation
                   </button>
                 </div>
               </div>

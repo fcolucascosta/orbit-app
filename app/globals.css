@@ -128,3 +128,77 @@
 .animate-pulse-once {
   animation: pulse-once 0.2s ease-out;
 }
+
+/* Scrollbar Brutalista */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111;
+  border-left: 2px solid #262626;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border: none;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+::-webkit-scrollbar-corner {
+  background: #111;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #404040 #111;
+}
+
+/* Sonner Toasts - Estilo Brutalista */
+[data-sonner-toaster] {
+  --normal-bg: #171717 !important;
+  --normal-border: #404040 !important;
+  --normal-text: #fff !important;
+  --success-bg: #171717 !important;
+  --success-border: #16a34a !important;
+  --success-text: #16a34a !important;
+  --error-bg: #171717 !important;
+  --error-border: #dc2626 !important;
+  --error-text: #dc2626 !important;
+}
+
+[data-sonner-toast] {
+  border-radius: 0 !important;
+  border-width: 2px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 12px !important;
+  padding: 16px !important;
+  box-shadow: none !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: #171717 !important;
+  border-color: #16a34a !important;
+  color: #16a34a !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: #171717 !important;
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: #16a34a !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] svg {
+  color: #dc2626 !important;
+}
